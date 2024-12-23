@@ -40,7 +40,7 @@ impl ShellCommand {
             _ if input.starts_with("cd") => Some(Self::Cd(input.trim_start_matches("cd ").to_string())),
             _ if input.starts_with("mkdir") => Some(Self::MkDir(input.trim_start_matches("mkdir ").to_string())),
             _ if input.starts_with("rm") => Some(Self::Rm(input.trim_start_matches("rm ").to_string())),
-            _ if input.starts_with("touch") => Some(Self::Rm(input.trim_start_matches("touch ").to_string())),
+            _ if input.starts_with("touch") => Some(Self::Touch(input.trim_start_matches("touch ").to_string())),
             _ => None,
         }
     }
