@@ -19,6 +19,8 @@ enum ShellCommand {
     Cd(String),
     MkDir(String),
     Ls,
+    Rm(String),
+    Touch(String)
 }
 
 // Initialize the virtual file system
@@ -37,6 +39,8 @@ impl ShellCommand {
             "ls" => Some(Self::Ls),
             _ if input.starts_with("cd") => Some(Self::Cd(input.trim_start_matches("cd ").to_string())),
             _ if input.starts_with("mkdir") => Some(Self::MkDir(input.trim_start_matches("mkdir ").to_string())),
+            _ if input.starts_with("rm") => Some(Self::Rm(input.trim_start_matches("rm ").to_string())),
+            _ if input.starts_with("touch") => Some(Self::Rm(input.trim_start_matches("touch ").to_string())),
             _ => None,
         }
     }
@@ -51,6 +55,8 @@ impl ShellCommand {
             Self::Cd(cd) => cmd_cd(cd),
             Self::MkDir(dir) => cmd_add_directory( dir),
             Self::Ls => cmd_ls(),
+            Self::Rm(path) => cmd_rm(path),
+            Self::Touch(filename) => cmd_touch(filename),
         }
     }
 }
@@ -117,4 +123,14 @@ fn cmd_add_directory(name: &str) {
 fn cmd_ls() {
     let mut vfs = VFS.write().unwrap();
     vfs.list();
+}
+
+fn cmd_rm(path: &str) {
+    let mut vfs = VFS.write().unwrap();
+    vfs.remove(path);
+}
+
+fn cmd_touch(filename: &str) {
+    let mut vfs = VFS.write().unwrap();
+    vfs.touch(filename);
 }

@@ -6,7 +6,7 @@ const SEPARATOR: &str = "/";
 #[derive(Debug, Clone)]
 struct File {
     name: String,
-    path: String,
+    path: PathBuf,
     content: String,
 }
 
@@ -140,6 +140,50 @@ impl Vfs {
             self.cwd = dir.path.clone();
         } else {
             println!("Directory not found");
+        }
+    }
+
+    pub fn remove(&mut self, files_path: &str) {
+        let file = files_path.split(SEPARATOR).last();
+        if file.unwrap().contains(".") {
+            let dir_path = &files_path.split(SEPARATOR).take(files_path.split(SEPARATOR).count() - 1).collect::<Vec<&str>>().join(SEPARATOR);
+            let current_dir = self.get_dir_in_vfs(self.cwd.join(dir_path).to_str().unwrap());
+            if let Some(dir) = current_dir {
+                if dir.files.contains_key(file.unwrap()) {
+                    dir.files.remove(file.unwrap());
+                } else {
+                    println!("File {} not found.", file.unwrap());
+                }
+            } else {
+                println!("Directory {} not found.",  dir_path);
+            }
+        } else {
+            let dir_to_remove = self.get_dir_in_vfs(self.cwd.join(files_path).to_str().unwrap());
+            if let Some(dir) = dir_to_remove  {
+                dir.parent.as_mut().unwrap().subdirectories.remove(&dir.name);
+            } else {
+                println!("Directory {} not found.", files_path)
+            }
+        }
+    }
+
+    pub fn touch(&mut self, filename: &str) {
+        if filename.contains(SEPARATOR) {
+            println!("Please provide only filename with extension {}", filename);
+            return;
+        }
+
+        let cwd = self.cwd.clone();
+        let current_dir = self.get_dir_in_vfs(cwd.to_str().unwrap()).unwrap();
+        if !current_dir.files.contains_key(filename) {
+            let new_file = File {
+                content: String::new(),
+                name: filename.to_string(),
+                path: PathBuf::from(cwd.join(filename))
+            };
+            current_dir.files.insert(filename.to_string(), new_file);
+        } else {
+            println!("{} already exists.", filename)
         }
     }
 
