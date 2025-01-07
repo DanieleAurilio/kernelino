@@ -20,7 +20,8 @@ enum ShellCommand {
     MkDir(String),
     Ls,
     Rm(String),
-    Touch(String)
+    Touch(String),
+    WriteFile(String)
 }
 
 // Initialize the virtual file system
@@ -41,6 +42,7 @@ impl ShellCommand {
             _ if input.starts_with("mkdir") => Some(Self::MkDir(input.trim_start_matches("mkdir ").to_string())),
             _ if input.starts_with("rm") => Some(Self::Rm(input.trim_start_matches("rm ").to_string())),
             _ if input.starts_with("touch") => Some(Self::Touch(input.trim_start_matches("touch ").to_string())),
+            _ if input.starts_with("write") => Some(Self::WriteFile(input.trim_start_matches("write ").to_string())),
             _ => None,
         }
     }
@@ -57,6 +59,7 @@ impl ShellCommand {
             Self::Ls => cmd_ls(),
             Self::Rm(path) => cmd_rm(path),
             Self::Touch(filename) => cmd_touch(filename),
+            Self::WriteFile(filename) => cmd_write_file(filename),
         }
     }
 }
@@ -94,6 +97,7 @@ fn cmd_help() {
     println!("  pwd - Print the current working directory");
     println!("  cd <path> - Change the current working directory");
     println!("  mkdir <name> - Create a new directory");
+    println!("  write <filename> - Write file content")
 }
 
 fn cmd_clear() {
@@ -133,4 +137,9 @@ fn cmd_rm(path: &str) {
 fn cmd_touch(filename: &str) {
     let mut vfs = VFS.write().unwrap();
     vfs.touch(filename);
+}
+
+fn cmd_write_file(filename: &str) {
+    let mut vfs = VFS.write().unwrap();
+    vfs.write_file(filename);
 }

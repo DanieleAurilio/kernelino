@@ -1,15 +1,16 @@
 use std::{collections::HashMap, path::PathBuf};
 use crate::utils;
+use crate::editor::Editor;
 
 const SEPARATOR: &str = "/";
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-struct File {
+pub struct File {
     name: String,
     path: PathBuf,
-    content: Vec<u8>,
-    size: u64,
+    pub content: Vec<u8>,
+    pub size: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -187,6 +188,21 @@ impl Vfs {
             current_dir.files.insert(filename.to_string(), new_file);
         } else {
             println!("{} already exists.", filename)
+        }
+    }
+
+    pub fn write_file(&mut self, filename: &str) {
+        let file_mut =  self.get_file_in_cwd(filename).unwrap();
+        Editor::write(file_mut);
+    }
+
+    fn get_file_in_cwd(&mut self, filename: &str) -> Option<&mut File> {
+        let cwd = self.cwd.clone();
+        let current_dir  = self.get_dir_in_vfs(cwd.to_str().unwrap()).unwrap();
+        if current_dir.files.contains_key(filename) {
+            Some(current_dir.files.get_mut(filename).unwrap())
+        } else {
+           None
         }
     }
 
