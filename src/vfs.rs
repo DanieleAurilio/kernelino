@@ -4,10 +4,12 @@ use crate::utils;
 const SEPARATOR: &str = "/";
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct File {
     name: String,
     path: PathBuf,
     content: String,
+    size: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -61,7 +63,7 @@ impl Vfs {
                 println!("No files found");
             } else {
                 for file in dir.files.values() {
-                    println!("{}", file.name);
+                    println!("{} {}", file.name, file.size);
                 }
             }
 
@@ -179,7 +181,8 @@ impl Vfs {
             let new_file = File {
                 content: String::new(),
                 name: filename.to_string(),
-                path: PathBuf::from(cwd.join(filename))
+                path: PathBuf::from(cwd.join(filename)),
+                size: 0,
             };
             current_dir.files.insert(filename.to_string(), new_file);
         } else {
