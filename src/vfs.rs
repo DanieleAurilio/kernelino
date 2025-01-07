@@ -8,7 +8,7 @@ const SEPARATOR: &str = "/";
 struct File {
     name: String,
     path: PathBuf,
-    content: String,
+    content: Vec<u8>,
     size: u64,
 }
 
@@ -179,7 +179,7 @@ impl Vfs {
         let current_dir = self.get_dir_in_vfs(cwd.to_str().unwrap()).unwrap();
         if !current_dir.files.contains_key(filename) {
             let new_file = File {
-                content: String::new(),
+                content: Vec::<u8>::new(),
                 name: filename.to_string(),
                 path: PathBuf::from(cwd.join(filename)),
                 size: 0,
