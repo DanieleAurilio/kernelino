@@ -1,26 +1,26 @@
+use std::io;
 /**
  * Minimal file editor
  * "wq" -> save and quit
- * "q" -> quit 
+ * "q" -> quit
  */
-
 use std::io::Write;
-use std::io;
+use std::sync::{Arc, Mutex};
 
 use crate::vfs::File;
 
- 
- #[warn(dead_code)]
-pub struct Editor {
-    
-}
+#[warn(dead_code)]
+pub struct Editor {}
 
 impl Editor {
-    pub fn write(file: &mut File) {
+    pub fn write(file_mux: Arc<Mutex<File>>) {
+        let mut file = file_mux.lock().unwrap();
         let mut new_content = Vec::<u8>::new();
         let mut buffer = String::new();
+        print!(
+            "Welcome to the editor! Type 'wq' to save and quit or 'q' to quit without saving.\n"
+        );
         loop {
-            
             print!("> ");
             io::stdout().flush().unwrap();
 
@@ -35,13 +35,13 @@ impl Editor {
                     file.size = file.content.len() as u64;
                     println!("File saved successfully!");
                     return;
-                },
+                }
                 "q" => {
                     println!("Exit without save");
                     return;
-                },
+                }
                 _ => {
-                    new_content.extend_from_slice(input.as_bytes()); 
+                    new_content.extend_from_slice(input.as_bytes());
                     new_content.push(b'\n');
                 }
             }

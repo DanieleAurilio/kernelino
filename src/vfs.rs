@@ -1,6 +1,9 @@
-use std::{collections::HashMap, path::PathBuf};
-use crate::utils;
 use crate::editor::Editor;
+use crate::utils;
+use crate::vmm::Vmm;
+use crate::vpm::Vpm;
+use std::sync::{Arc, Mutex};
+use std::{collections::HashMap, path::PathBuf};
 
 const SEPARATOR: &str = "/";
 
@@ -17,7 +20,7 @@ pub struct File {
 struct Directory {
     name: String,
     parent: Option<Box<Directory>>,
-    files: HashMap<String, File>,
+    files: HashMap<String, Arc<Mutex<File>>>,
     subdirectories: HashMap<String, Directory>,
     path: PathBuf,
 }
@@ -38,15 +41,17 @@ impl Directory {
 pub struct Vfs {
     root: Directory,
     cwd: PathBuf,
+    vpm: Vpm,
 }
 
 impl Vfs {
-    pub fn new() -> Self {
+    pub fn new(vpm: Vpm) -> Self {
         let root_path = PathBuf::from(SEPARATOR);
         let root = Directory::new("/", PathBuf::from("/"), None);
         Self {
             root,
             cwd: root_path,
+            vpm,
         }
     }
 
@@ -64,6 +69,7 @@ impl Vfs {
                 println!("No files found");
             } else {
                 for file in dir.files.values() {
+                    let file = file.as_ref().lock().unwrap();
                     println!("{} {}", file.name, file.size);
                 }
             }
@@ -75,18 +81,13 @@ impl Vfs {
                     println!("{}/", subdir.name);
                 }
             }
-            
         }
     }
 
     pub fn pwd(self) {
         println!(
             "{}",
-            self.cwd
-                .clone()
-                .into_os_string()
-                .into_string()
-                .unwrap()
+            self.cwd.clone().into_os_string().into_string().unwrap()
         );
     }
 
@@ -96,7 +97,7 @@ impl Vfs {
             Some(dir) => dir,
             None => return,
         };
-        
+
         if utils::is_unix_symbol(dirnames) {
             println!("Invalid directory name");
             return;
@@ -106,7 +107,14 @@ impl Vfs {
             let dirs = dirnames.split(SEPARATOR);
             for dir in dirs {
                 if !current_dir.subdirectories.contains_key(dir) {
-                    current_dir.subdirectories.insert(String::from(dir), Directory::new(dir, current_path.join(dir), Some(Box::new(current_dir.clone()))));
+                    current_dir.subdirectories.insert(
+                        String::from(dir),
+                        Directory::new(
+                            dir,
+                            current_path.join(dir),
+                            Some(Box::new(current_dir.clone())),
+                        ),
+                    );
                 } else {
                     let curr = current_dir.subdirectories.get_mut(dir).unwrap();
                     current_path = curr.path.clone();
@@ -115,7 +123,14 @@ impl Vfs {
             }
         } else {
             if !current_dir.subdirectories.contains_key(dirnames) {
-                current_dir.subdirectories.insert(String::from(dirnames), Directory::new(dirnames, current_path.join(dirnames), Some(Box::new(current_dir.clone()))));
+                current_dir.subdirectories.insert(
+                    String::from(dirnames),
+                    Directory::new(
+                        dirnames,
+                        current_path.join(dirnames),
+                        Some(Box::new(current_dir.clone())),
+                    ),
+                );
             } else {
                 println!("Directory already exists");
             }
@@ -137,7 +152,6 @@ impl Vfs {
             return;
         }
 
-
         let dir_to = self.get_dir_in_vfs(self.cwd.join(dir).to_str().unwrap());
         if let Some(dir) = dir_to {
             self.cwd = dir.path.clone();
@@ -149,7 +163,11 @@ impl Vfs {
     pub fn remove(&mut self, files_path: &str) {
         let file = files_path.split(SEPARATOR).last();
         if file.unwrap().contains(".") {
-            let dir_path = &files_path.split(SEPARATOR).take(files_path.split(SEPARATOR).count() - 1).collect::<Vec<&str>>().join(SEPARATOR);
+            let dir_path = &files_path
+                .split(SEPARATOR)
+                .take(files_path.split(SEPARATOR).count() - 1)
+                .collect::<Vec<&str>>()
+                .join(SEPARATOR);
             let current_dir = self.get_dir_in_vfs(self.cwd.join(dir_path).to_str().unwrap());
             if let Some(dir) = current_dir {
                 if dir.files.contains_key(file.unwrap()) {
@@ -158,12 +176,16 @@ impl Vfs {
                     println!("File {} not found.", file.unwrap());
                 }
             } else {
-                println!("Directory {} not found.",  dir_path);
+                println!("Directory {} not found.", dir_path);
             }
         } else {
             let dir_to_remove = self.get_dir_in_vfs(self.cwd.join(files_path).to_str().unwrap());
-            if let Some(dir) = dir_to_remove  {
-                dir.parent.as_mut().unwrap().subdirectories.remove(&dir.name);
+            if let Some(dir) = dir_to_remove {
+                dir.parent
+                    .as_mut()
+                    .unwrap()
+                    .subdirectories
+                    .remove(&dir.name);
             } else {
                 println!("Directory {} not found.", files_path)
             }
@@ -185,24 +207,28 @@ impl Vfs {
                 path: PathBuf::from(cwd.join(filename)),
                 size: 0,
             };
-            current_dir.files.insert(filename.to_string(), new_file);
+            current_dir
+                .files
+                .insert(filename.to_string(), Arc::new(Mutex::new(new_file)));
         } else {
-            println!("{} already exists.", filename)
+            println!("File {} already exists.", filename)
         }
     }
 
     pub fn write_file(&mut self, filename: &str) {
-        let file_mut =  self.get_file_in_cwd(filename).unwrap();
-        Editor::write(file_mut);
+        let file = self.get_file_in_cwd(filename).unwrap();
+        self.vpm.execute(move |_| {
+            Editor::write(file);
+        });
     }
 
-    fn get_file_in_cwd(&mut self, filename: &str) -> Option<&mut File> {
+    pub fn get_file_in_cwd(&mut self, filename: &str) -> Option<Arc<Mutex<File>>> {
         let cwd = self.cwd.clone();
-        let current_dir  = self.get_dir_in_vfs(cwd.to_str().unwrap()).unwrap();
+        let current_dir = self.get_dir_in_vfs(cwd.to_str().unwrap()).unwrap();
         if current_dir.files.contains_key(filename) {
-            Some(current_dir.files.get_mut(filename).unwrap())
+            Some(current_dir.files.get(filename).unwrap().clone())
         } else {
-           None
+            None
         }
     }
 
@@ -223,5 +249,5 @@ impl Vfs {
 }
 
 pub fn init_vfs() -> Vfs {
-    Vfs::new()
+    Vfs::new(Vpm::new(Vmm::new(1000 * 4096)))
 }
