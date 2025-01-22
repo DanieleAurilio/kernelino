@@ -2,17 +2,18 @@
  * Virtual Process Manager
  */
 use crate::vmm::Vmm;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{atomic::{AtomicU32, Ordering}, Arc, Mutex};
 
 static NEXT_PID: AtomicU32 = AtomicU32::new(1);
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct Vpm {
-    pid: u32,
-    vmm: Vmm,
+    pub pid: u32,
+    pub vmm: Arc<Mutex<Vmm>>,
 }
 
 impl Vpm {
-    pub fn new(vmm: Vmm) -> Self {
+    pub fn new(vmm: Arc<Mutex<Vmm>>) -> Self {
         Self {
             pid: NEXT_PID.fetch_add(1, Ordering::Relaxed),
             vmm,

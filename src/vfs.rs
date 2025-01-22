@@ -12,7 +12,7 @@ const SEPARATOR: &str = "/";
 pub struct File {
     name: String,
     path: PathBuf,
-    pub content: Vec<u8>,
+    pub vmm_address: u64,
     pub size: u64,
 }
 
@@ -41,7 +41,7 @@ impl Directory {
 pub struct Vfs {
     root: Directory,
     cwd: PathBuf,
-    vpm: Vpm,
+    pub vpm: Vpm,
 }
 
 impl Vfs {
@@ -171,7 +171,18 @@ impl Vfs {
             let current_dir = self.get_dir_in_vfs(self.cwd.join(dir_path).to_str().unwrap());
             if let Some(dir) = current_dir {
                 if dir.files.contains_key(file.unwrap()) {
+                    let file_address_to_deallocate = dir
+                        .files
+                        .get(file.unwrap())
+                        .unwrap()
+                        .lock()
+                        .unwrap()
+                        .vmm_address
+                        .clone();
                     dir.files.remove(file.unwrap());
+                    let mut vmm = self.vpm.vmm.lock().unwrap();
+                    vmm.deallocate_page(file_address_to_deallocate);
+                    drop(vmm);
                 } else {
                     println!("File {} not found.", file.unwrap());
                 }
@@ -198,14 +209,18 @@ impl Vfs {
             return;
         }
 
+        let mut vmm = self.vpm.vmm.lock().unwrap();
+        let (vmm_address, size) = vmm.allocate_page();
+        drop(vmm);
+
         let cwd = self.cwd.clone();
         let current_dir = self.get_dir_in_vfs(cwd.to_str().unwrap()).unwrap();
         if !current_dir.files.contains_key(filename) {
             let new_file = File {
-                content: Vec::<u8>::new(),
+                vmm_address,
                 name: filename.to_string(),
                 path: PathBuf::from(cwd.join(filename)),
-                size: 0,
+                size,
             };
             current_dir
                 .files
@@ -216,18 +231,34 @@ impl Vfs {
     }
 
     pub fn write_file(&mut self, filename: &str) {
-        let file = self.get_file_in_cwd(filename).unwrap();
-        self.vpm.execute(move |_| {
-            Editor::write(file);
-        });
+        if let Some(file) = self.get_file_in_cwd(filename) {
+            let vmm_clone = Arc::clone(&self.vpm.vmm);
+            self.vpm.execute(move |_| {
+                    Editor::write(file, vmm_clone);
+            });   
+        } 
+    }
+
+    pub fn read_file(&mut self, filename: &str) {
+        if let Some(file) = self.get_file_in_cwd(filename) {
+            let vmm_clone = Arc::clone(&self.vpm.vmm);
+            self.vpm.execute(move |_| {
+                Editor::read(file, vmm_clone);
+            });
+        }
     }
 
     pub fn get_file_in_cwd(&mut self, filename: &str) -> Option<Arc<Mutex<File>>> {
         let cwd = self.cwd.clone();
-        let current_dir = self.get_dir_in_vfs(cwd.to_str().unwrap()).unwrap();
-        if current_dir.files.contains_key(filename) {
-            Some(current_dir.files.get(filename).unwrap().clone())
+        if let Some(current_dir) = self.get_dir_in_vfs(cwd.to_str().unwrap()) {
+            if current_dir.files.contains_key(filename) {
+                return Some(current_dir.files.get(filename).unwrap().clone());
+            } else {
+                println!("File {} not found.", filename);
+                return None
+            }
         } else {
+            println!("Directory {} not found.", cwd.to_str().unwrap());
             None
         }
     }
@@ -249,5 +280,5 @@ impl Vfs {
 }
 
 pub fn init_vfs() -> Vfs {
-    Vfs::new(Vpm::new(Vmm::new(1000 * 4096)))
+    Vfs::new(Vpm::new(Arc::new(Mutex::new(Vmm::new(1000 * 4096)))))
 }

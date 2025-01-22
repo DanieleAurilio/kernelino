@@ -21,7 +21,8 @@ enum ShellCommand {
     Ls,
     Rm(String),
     Touch(String),
-    WriteFile(String)
+    WriteFile(String),
+    ReadFile(String)
 }
 
 // Initialize the virtual file system
@@ -43,6 +44,7 @@ impl ShellCommand {
             _ if input.starts_with("rm") => Some(Self::Rm(input.trim_start_matches("rm ").to_string())),
             _ if input.starts_with("touch") => Some(Self::Touch(input.trim_start_matches("touch ").to_string())),
             _ if input.starts_with("write") => Some(Self::WriteFile(input.trim_start_matches("write ").to_string())),
+            _ if input.starts_with("read") => Some(Self::ReadFile(input.trim_start_matches("read ").to_string())),
             _ => None,
         }
     }
@@ -60,6 +62,7 @@ impl ShellCommand {
             Self::Rm(path) => cmd_rm(path),
             Self::Touch(filename) => cmd_touch(filename),
             Self::WriteFile(filename) => cmd_write_file(filename),
+            Self::ReadFile(filename) => cmd_read_file(filename),
         }
     }
 }
@@ -142,4 +145,9 @@ fn cmd_touch(filename: &str) {
 fn cmd_write_file(filename: &str) {
     let mut vfs = VFS.write().unwrap();
     vfs.write_file(filename);
+}
+
+fn cmd_read_file(filename: &str) {
+    let mut vfs = VFS.read().unwrap().clone();
+    vfs.read_file(filename);
 }
