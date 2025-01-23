@@ -84,21 +84,23 @@ impl Vmm {
        (virtual_address, DEFAULT_PAGE_SIZE)
     }
 
-    pub fn deallocate_page(&mut self, virtual_address: u64) {        
-        if let Some(page) = self.page_table.remove(&virtual_address) {
-            self.free_memory += DEFAULT_PAGE_SIZE;
-            if let Some(frame) = self.frames.iter_mut().find(|f| f.address == page.physical_address) {
-                frame.in_use = false;
-                frame.content = None;
+    pub fn deallocate_page(&mut self, virtual_addresses: Vec<u64>) {    
+        virtual_addresses.iter().for_each(|address| {
+            if let Some(page) = self.page_table.remove(&address) {
+                self.free_memory += DEFAULT_PAGE_SIZE;
+                if let Some(frame) = self.frames.iter_mut().find(|f| f.address == page.physical_address) {
+                    frame.in_use = false;
+                    frame.content = None;
+                }
+            } else {
+                panic!("Cannot deallocate page {}", address);
             }
-        } else {
-            println!("Cannot deallocate page {}", virtual_address);
-        }
+        });
     }
 
-    pub fn allocate_bytes(&mut self, bytes: Vec<u8>) -> u64 {
+    pub fn allocate_bytes(&mut self, bytes: Vec<u8>) -> Vec<u64> {
         let mut remaining_bytes = bytes.as_slice();
-        let mut first_virtual_address: Option<u64> = None;
+        let mut virtual_addresses: Vec<u64> = Vec::<u64>::new();
 
         while !remaining_bytes.is_empty() {
             let (virtual_address, _) = self.allocate_page();
@@ -111,21 +113,18 @@ impl Vmm {
                 remaining_bytes = &remaining_bytes[bytes_to_copy..];
             }
 
-            if first_virtual_address.is_none() {
-                first_virtual_address = Some(virtual_address);
-            }
+            virtual_addresses.push(virtual_address);
         }
 
-        first_virtual_address.expect("Failed to allocate bytes")
+        virtual_addresses
     }
 
-    pub fn get_bytes(&self, virtual_address: u64, size: u64) -> Vec<u8> {
+    pub fn get_bytes(&self, virtual_addresses: Vec<u64>, size: u64) -> Vec<u8> {
         let mut bytes = Vec::new();
         let mut remaining_size = size;
-        let mut current_virtual_address = virtual_address;
-
-        while remaining_size > 0 {
-            let page = self.page_table.get(&current_virtual_address).expect("Page not found");
+        let mut current_virtual_address = virtual_addresses[0];
+        virtual_addresses.iter().for_each(|&address| {
+            let page = self.page_table.get(&address).expect("Page not found");
             let frame = self.frames.iter().find(|f| f.address == page.physical_address).expect("Frame not found");
             let content = frame.content.as_ref().expect("Content not found");
 
@@ -133,7 +132,7 @@ impl Vmm {
             bytes.extend_from_slice(&content[..bytes_to_copy]);
             remaining_size -= bytes_to_copy as u64;
             current_virtual_address += 1;
-        }
+        });
 
         bytes
     }

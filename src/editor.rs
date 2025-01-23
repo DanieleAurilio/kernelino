@@ -53,7 +53,7 @@ impl Editor {
     pub fn read(file_mux: Arc<Mutex<File>>, vmm: Arc<Mutex<Vmm>>) {
         let file = file_mux.lock().unwrap();
         let vmm_mutex = vmm.lock().unwrap();
-        let content = vmm_mutex.get_bytes(file.vmm_address, file.size);
+        let content = vmm_mutex.get_bytes(file.vmm_address.clone(), file.size);
         let content = String::from_utf8(content).unwrap();
         content.lines().filter(|line| !line.is_empty()).for_each(|line| {
             println!("{}", line);
