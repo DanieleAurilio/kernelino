@@ -1,4 +1,4 @@
 ![kernelino_resized](https://github.com/user-attachments/assets/32e2163c-46e3-494d-b6e0-5ad5b13a8dcd)
 
 # kernelino
-kernelino is a lightweight, minimal terminal-based operating system written in Rust.
+Kernelino is a lightweight, terminal-based OS written in Rust, featuring a Virtual File System (VFS) for flexible file management, a Virtual Process Management (VPM) system for process control, and a Virtual Memory Management (VMM) system for efficient memory handling.
