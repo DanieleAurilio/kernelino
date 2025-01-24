@@ -27,9 +27,11 @@ impl Vpm {
 
     pub fn execute<F>(&mut self, func: F)
     where
-        F: FnOnce(&Self),
+        F: FnOnce(&Self) + Send + 'static,
     {
         let child_process = self.fork();
-        func(&child_process);
+        std::thread::spawn(move || {
+            func(&child_process);
+        });
     }
 }
