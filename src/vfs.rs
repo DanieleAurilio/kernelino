@@ -210,7 +210,7 @@ impl Vfs {
         }
 
         let mut vmm = self.vpm.vmm.lock().unwrap();
-        let (vmm_address, size) = vmm.allocate_page();
+        let (vmm_address, _) = vmm.allocate_page();
         drop(vmm);
 
         let cwd = self.cwd.clone();
@@ -220,7 +220,7 @@ impl Vfs {
                 vmm_address: vec![vmm_address],
                 name: filename.to_string(),
                 path: PathBuf::from(cwd.join(filename)),
-                size,
+                size: 0,
             };
             current_dir
                 .files

@@ -25,7 +25,8 @@ impl Vpm {
         Vpm::new(main_process.vmm)
     }
 
-    pub fn execute<F>(&mut self, func: F)
+    #[allow(dead_code)]
+    pub fn execute_child<F>(&mut self, func: F)
     where
         F: FnOnce(&Self) + Send + 'static,
     {
@@ -33,5 +34,13 @@ impl Vpm {
         std::thread::spawn(move || {
             func(&child_process);
         });
+    }
+
+    pub fn execute<F>(&mut self, func: F)
+    where
+        F: FnOnce(&Self),
+    {
+        let child_process = self.fork();
+            func(&child_process);
     }
 }

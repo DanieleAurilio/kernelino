@@ -126,6 +126,9 @@ impl Vmm {
         virtual_addresses.iter().for_each(|&address| {
             let page = self.page_table.get(&address).expect("Page not found");
             let frame = self.frames.iter().find(|f| f.address == page.physical_address).expect("Frame not found");
+            if frame.content.is_none() {
+                return;
+            }
             let content = frame.content.as_ref().expect("Content not found");
 
             let bytes_to_copy = min(remaining_size as usize, content.len());
