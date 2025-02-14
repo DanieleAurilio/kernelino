@@ -234,9 +234,9 @@ impl Vfs {
         if let Some(file) = self.get_file_in_cwd(filename) {
             let vmm_clone = Arc::clone(&self.vpm.vmm);
             self.vpm.execute(move |_| {
-                    Editor::write(file, vmm_clone);
-            });   
-        } 
+                Editor::write(file, vmm_clone);
+            });
+        }
     }
 
     pub fn read_file(&mut self, filename: &str) {
@@ -255,7 +255,7 @@ impl Vfs {
                 return Some(current_dir.files.get(filename).unwrap().clone());
             } else {
                 println!("File {} not found.", filename);
-                return None
+                return None;
             }
         } else {
             println!("Directory {} not found.", cwd.to_str().unwrap());

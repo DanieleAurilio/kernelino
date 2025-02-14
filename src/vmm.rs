@@ -1,7 +1,6 @@
 /**
  * Virtual Memory Manager
  */
-
 use std::{cmp::min, collections::HashMap};
 
 const DEFAULT_PAGE_SIZE: u64 = 4096;
@@ -12,12 +11,12 @@ struct Frame {
     id: u64,
     address: u64,
     in_use: bool,
-    content: Option<Vec<u8>>
+    content: Option<Vec<u8>>,
 }
 
 /**
  * flags assume binaries values.
- * 
+ *
  * P (Present): 0b0000_0001
  * R/W (Read/Write): 0b0000_0010
  * U/S (User/Supervisor): 0b0000_0100
@@ -26,14 +25,14 @@ struct Frame {
  * D (Dirty): 0b0010_0000
  * PS (Page Size): 0b0100_0000
  * PG (Page Global): 0b1000_0000
- * 
+ *
  */
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct PageTableEntry {
     virtual_address: u64,
     physical_address: u64,
-    flags: u8
+    flags: u8,
 }
 
 #[derive(Debug, Clone)]
@@ -43,7 +42,7 @@ pub struct Vmm {
     pub free_memory: u64,
     frames: Vec<Frame>,
     page_table: HashMap<u64, PageTableEntry>,
-    next_virtual_address: u64
+    next_virtual_address: u64,
 }
 
 impl Vmm {
@@ -55,7 +54,7 @@ impl Vmm {
                 id: frame_id,
                 in_use: false,
                 address: frame_id * DEFAULT_PAGE_SIZE,
-                content: None
+                content: None,
             });
         }
 
@@ -64,12 +63,16 @@ impl Vmm {
             page_table: HashMap::new(),
             total_memory,
             frames,
-            next_virtual_address: 0
+            next_virtual_address: 0,
         }
     }
 
-    pub fn allocate_page(&mut self) -> (u64, u64)  {
-        let frame = self.frames.iter().find(|f| !f.in_use).expect("Out of memory allocating page.");
+    pub fn allocate_page(&mut self) -> (u64, u64) {
+        let frame = self
+            .frames
+            .iter()
+            .find(|f| !f.in_use)
+            .expect("Out of memory allocating page.");
         let virtual_address = self.next_virtual_address;
         self.next_virtual_address += 1;
 
@@ -81,14 +84,18 @@ impl Vmm {
         self.page_table.insert(virtual_address, page);
         self.free_memory -= DEFAULT_PAGE_SIZE;
 
-       (virtual_address, DEFAULT_PAGE_SIZE)
+        (virtual_address, DEFAULT_PAGE_SIZE)
     }
 
-    pub fn deallocate_page(&mut self, virtual_addresses: Vec<u64>) {    
+    pub fn deallocate_page(&mut self, virtual_addresses: Vec<u64>) {
         virtual_addresses.iter().for_each(|address| {
             if let Some(page) = self.page_table.remove(&address) {
                 self.free_memory += DEFAULT_PAGE_SIZE;
-                if let Some(frame) = self.frames.iter_mut().find(|f| f.address == page.physical_address) {
+                if let Some(frame) = self
+                    .frames
+                    .iter_mut()
+                    .find(|f| f.address == page.physical_address)
+                {
                     frame.in_use = false;
                     frame.content = None;
                 }
@@ -105,7 +112,11 @@ impl Vmm {
         while !remaining_bytes.is_empty() {
             let (virtual_address, _) = self.allocate_page();
             let page = self.page_table.get_mut(&virtual_address).unwrap();
-            if let Some(frame) = self.frames.iter_mut().find(|f|f.address == page.physical_address) {
+            if let Some(frame) = self
+                .frames
+                .iter_mut()
+                .find(|f| f.address == page.physical_address)
+            {
                 frame.in_use = true;
 
                 let bytes_to_copy = min(remaining_bytes.len(), DEFAULT_PAGE_SIZE as usize);
@@ -125,7 +136,11 @@ impl Vmm {
         let mut current_virtual_address = virtual_addresses[0];
         virtual_addresses.iter().for_each(|&address| {
             let page = self.page_table.get(&address).expect("Page not found");
-            let frame = self.frames.iter().find(|f| f.address == page.physical_address).expect("Frame not found");
+            let frame = self
+                .frames
+                .iter()
+                .find(|f| f.address == page.physical_address)
+                .expect("Frame not found");
             if frame.content.is_none() {
                 return;
             }

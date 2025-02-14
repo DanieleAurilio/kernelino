@@ -1,12 +1,7 @@
-use std::io::{self, Write};
+use crate::utils;
 use lazy_static::lazy_static;
+use std::io::{self, Write};
 use std::sync::RwLock;
-use crossterm::{
-    self,
-    cursor::MoveTo,
-    terminal::{Clear, ClearType},
-    ExecutableCommand,
-};
 
 use crate::vfs::{init_vfs, Vfs};
 
@@ -23,13 +18,13 @@ enum ShellCommand {
     Touch(String),
     WriteFile(String),
     ReadFile(String),
-    Top
+    Top,
 }
 
 // Initialize the virtual file system
-lazy_static!(
+lazy_static! {
     static ref VFS: RwLock<Vfs> = RwLock::new(init_vfs());
-);
+}
 
 impl ShellCommand {
     fn from_str(input: &str) -> Option<Self> {
@@ -41,12 +36,24 @@ impl ShellCommand {
             "pwd" => Some(Self::Pwd),
             "ls" => Some(Self::Ls),
             "top" => Some(Self::Top),
-            _ if input.starts_with("cd") => Some(Self::Cd(input.trim_start_matches("cd ").to_string())),
-            _ if input.starts_with("mkdir") => Some(Self::MkDir(input.trim_start_matches("mkdir ").to_string())),
-            _ if input.starts_with("rm") => Some(Self::Rm(input.trim_start_matches("rm ").to_string())),
-            _ if input.starts_with("touch") => Some(Self::Touch(input.trim_start_matches("touch ").to_string())),
-            _ if input.starts_with("write") => Some(Self::WriteFile(input.trim_start_matches("write ").to_string())),
-            _ if input.starts_with("read") => Some(Self::ReadFile(input.trim_start_matches("read ").to_string())),
+            _ if input.starts_with("cd") => {
+                Some(Self::Cd(input.trim_start_matches("cd ").to_string()))
+            }
+            _ if input.starts_with("mkdir") => {
+                Some(Self::MkDir(input.trim_start_matches("mkdir ").to_string()))
+            }
+            _ if input.starts_with("rm") => {
+                Some(Self::Rm(input.trim_start_matches("rm ").to_string()))
+            }
+            _ if input.starts_with("touch") => {
+                Some(Self::Touch(input.trim_start_matches("touch ").to_string()))
+            }
+            _ if input.starts_with("write") => Some(Self::WriteFile(
+                input.trim_start_matches("write ").to_string(),
+            )),
+            _ if input.starts_with("read") => Some(Self::ReadFile(
+                input.trim_start_matches("read ").to_string(),
+            )),
             _ => None,
         }
     }
@@ -59,7 +66,7 @@ impl ShellCommand {
             Self::Clear => cmd_clear(),
             Self::Pwd => cmd_pwd(),
             Self::Cd(cd) => cmd_cd(cd),
-            Self::MkDir(dir) => cmd_add_directory( dir),
+            Self::MkDir(dir) => cmd_add_directory(dir),
             Self::Ls => cmd_ls(),
             Self::Rm(path) => cmd_rm(path),
             Self::Touch(filename) => cmd_touch(filename),
@@ -103,12 +110,16 @@ fn cmd_help() {
     println!("  pwd - Print the current working directory");
     println!("  cd <path> - Change the current working directory");
     println!("  mkdir <name> - Create a new directory");
-    println!("  write <filename> - Write file content")
+    println!("  touch <filename> - Create a new file");
+    println!("  write <filename> - Write file content");
+    println!("  read <filename> - Read file content");
+    println!("  ls - List directory contents");
+    println!("  rm <path> - Remove a file or directory");
+    println!("  top - Show the processes");
 }
 
 fn cmd_clear() {
-    io::stdout().execute(Clear(ClearType::All)).unwrap();
-    io::stdout().execute(MoveTo(0, 0)).unwrap();
+    utils::clear_terminal();
 }
 
 fn cmd_newline() {

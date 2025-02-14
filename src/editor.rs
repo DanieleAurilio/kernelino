@@ -59,8 +59,11 @@ impl Editor {
             return;
         }
         let content = String::from_utf8(content).unwrap();
-        content.lines().filter(|line| !line.is_empty()).for_each(|line| {
-            println!("{}", line);
-        });
+        content
+            .lines()
+            .filter(|line| !line.is_empty())
+            .for_each(|line| {
+                println!("{}", line);
+            });
     }
 }

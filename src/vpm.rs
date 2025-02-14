@@ -1,16 +1,11 @@
 /**
  * Virtual Process Manager
  */
-use crossterm::{
-    cursor::MoveTo,
-    terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
-    ExecutableCommand,
-};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
-use crate::vmm::Vmm;
+use crate::{utils, vmm::Vmm};
 use core::time;
 use std::{
-    io::stdout,
     sync::{
         atomic::{AtomicU32, Ordering},
         Arc, Mutex,
@@ -99,8 +94,7 @@ impl Vpm {
             disable_raw_mode().unwrap();
 
             // Clear the screen
-            stdout().execute(Clear(ClearType::All)).unwrap();
-            stdout().execute(MoveTo(0, 0)).unwrap();
+            utils::clear_terminal();
 
             let time = self.time.lock().unwrap();
             println!("Press ESC to stop showing processes");
