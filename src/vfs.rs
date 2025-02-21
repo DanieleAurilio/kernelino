@@ -230,13 +230,47 @@ impl Vfs {
         }
     }
 
-    pub fn write_file(&mut self, filename: &str) {
+    /**
+     * Allow to write file content, if no bytes are provided, it will open the editor
+     */
+    pub fn write_file(
+        &mut self,
+        filename: &str,
+        bytes_to_write: Option<Vec<u8>>,
+        filepath: Option<&str>,
+    ) {
         if let Some(file) = self.get_file_in_cwd(filename) {
             let vmm_clone = Arc::clone(&self.vpm.vmm);
-            self.vpm.execute(move |_| {
-                Editor::write(file, vmm_clone);
-            });
+            if bytes_to_write.is_none() {
+                self.vpm.execute(move |_| {
+                    Editor::write(file, vmm_clone);
+                });
+            } else {
+                self.write_file_bytes(vmm_clone, file, bytes_to_write.unwrap(), filepath);
+            }
         }
+    }
+
+    fn write_file_bytes(
+        &mut self,
+        vmm: Arc<Mutex<Vmm>>,
+        file: Arc<Mutex<File>>,
+        bytes: Vec<u8>,
+        filepath: Option<&str>,
+    ) {
+        if filepath.is_none() {
+            println!("Please provide a file path");
+            return;
+        }
+
+        self.vpm.execute(move |_| {
+            let mut vmm = vmm.lock().unwrap();
+            let virtual_addresses = vmm.allocate_bytes(bytes.clone());
+            let mut file = file.lock().unwrap();
+            file.size = bytes.len() as u64;
+            file.vmm_address = virtual_addresses;
+            file.path = PathBuf::from(filepath.unwrap());
+        });
     }
 
     pub fn read_file(&mut self, filename: &str) {
@@ -280,5 +314,7 @@ impl Vfs {
 }
 
 pub fn init_vfs() -> Vfs {
-    Vfs::new(Vpm::new(Arc::new(Mutex::new(Vmm::new(1000 * 4096)))))
+    Vfs::new(Vpm::new(Arc::new(Mutex::new(Vmm::new(
+        1024 * 1024 * 1024 * 4,
+    )))))
 }

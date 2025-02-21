@@ -4,5 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+bzip2 = "0.5.1"
 crossterm = "0.28.1"
+flate2 = "1.0.35"
 lazy_static = "1.5.0"
+reqwest = "0.12.12"
+serde_json = "1.0.138"
+tokio = { version = "1.43.0", features = ["full"] }
+tokio-macros = { version = "0.2.0-alpha.6" }
+xz = "0.1.0"
