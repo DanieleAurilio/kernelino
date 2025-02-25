@@ -8,6 +8,7 @@ bzip2 = "0.5.1"
 crossterm = "0.28.1"
 flate2 = "1.0.35"
 lazy_static = "1.5.0"
+libc = "0.2.169"
 reqwest = "0.12.12"
 serde_json = "1.0.138"
 tokio = { version = "1.43.0", features = ["full"] }

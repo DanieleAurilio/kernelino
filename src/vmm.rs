@@ -2,6 +2,9 @@
  * Virtual Memory Manager
  */
 use std::{cmp::min, collections::HashMap};
+use libc;
+
+use crate::utils::{self, SupportedOS};
 
 const DEFAULT_PAGE_SIZE: u64 = 4096;
 
@@ -153,5 +156,28 @@ impl Vmm {
         });
 
         bytes
+    }
+
+    pub fn execute(&mut self, virtual_addresses: Vec<u64>) {
+        match utils::is_unix() {
+            Some(os) => {
+                if os == SupportedOS::Linux.to_string() {
+                    self.execute_linux(virtual_addresses);
+                } else if os == SupportedOS::MacOS.to_string() {
+                    println!("Not implemented yet");
+                } else {
+                    panic!("Unsupported OS");
+                }
+            },
+            None => {
+                panic!("Unsupported OS");
+            }
+        }
+    }
+
+    fn execute_linux(&mut self, virtual_addresses: Vec<u64>) {
+        let bytes = self.get_bytes(virtual_addresses, DEFAULT_PAGE_SIZE);
+        
+        libc::execv(prog, argv)
     }
 }

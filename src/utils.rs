@@ -33,6 +33,20 @@ impl fmt::Display for TarArchive {
     }
 }
 
+pub enum SupportedOS {
+    Linux,
+    MacOS,
+}
+
+impl fmt::Display for SupportedOS {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SupportedOS::Linux => write!(f, "linux"),
+            SupportedOS::MacOS => write!(f, "macos"),
+        }
+    }
+}
+
 pub fn clear_terminal() {
     stdout().execute(Clear(ClearType::All)).unwrap();
     stdout().execute(MoveTo(0, 0)).unwrap();
@@ -78,8 +92,8 @@ pub async fn http_async_get(
 
 pub fn is_unix() -> Option<String> {
     match env::consts::OS {
-        "linux" => return Some("linux".to_string()),
-        "macos" => return Some("macos".to_string()),
+        "linux" => return Some(SupportedOS::Linux.to_string()),
+        "macos" => return Some(SupportedOS::MacOS.to_string()),
         _ => {
             println!("KPM Error: Unsupported OS");
             return None;

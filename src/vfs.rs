@@ -311,6 +311,22 @@ impl Vfs {
         }
         Some(current_dir)
     }
+
+    pub fn execute_file(&mut self, filename: &str) {
+        let file = self.get_file_in_cwd(filename);
+        if file.is_none() {
+            println!("File not found");
+            return;
+        }
+
+        let file = file.unwrap();
+        let file = file.lock().unwrap();
+        let vmm = Arc::clone(&self.vpm.vmm);
+        self.vpm.execute(move |_| {
+            let mut vmm = vmm.lock().unwrap();
+            vmm.execute(file.vmm_address.clone());
+        });
+    }
 }
 
 pub fn init_vfs() -> Vfs {

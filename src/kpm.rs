@@ -170,4 +170,18 @@ impl KPM {
             println!("Name: {} Version: {} Path: {}", name, package.version, package.path);
         }
     }
+
+    pub fn execute(&self, mut vfs: RwLockWriteGuard<Vfs>, package_name: &str) {
+        let package = self.packages.get(package_name);
+        if package.is_none() {
+            println!("Package not found");
+            return;
+        }
+
+        let package = package.unwrap();
+        let path = package.path.as_str();
+        vfs.change_dir(path);
+        vfs.execute_file(package_name);
+        vfs.change_dir("/");
+    }
 }
