@@ -10,7 +10,7 @@ use libc;
 pub fn memfd_create(name: &str, flags: i32) -> i32 {
     let c_name = CString::new(name).unwrap();
     unsafe {
-        libc::syscall(libc::SYSPROTO_CONTROL, c_name.as_ptr(), flags)
+        libc::syscall(libc::SYS_memfd_create, c_name.as_ptr(), flags).try_into().unwrap()
     }
 }
 

@@ -149,7 +149,9 @@ impl KPM {
                     .strip_suffix(TarArchive::Gz.to_string().as_str())
                     .or_else(|| filename.strip_suffix(TarArchive::Xz.to_string().as_str()))
                     .or_else(|| filename.strip_suffix(TarArchive::Bz2.to_string().as_str()))
+                    .or_else(|| filename.strip_suffix(TarArchive::Lz.to_string().as_str()))
                     .unwrap();
+                utils::to_archive(&deflate_bytes);
                 self.write_downloaded_file(vfs, &deflate_bytes, package_name, "/bin");
                 
                 let package_name_splitted = package_name.split("-").next();

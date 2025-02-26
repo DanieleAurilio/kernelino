@@ -5,6 +5,7 @@ use crossterm::{
 };
 
 use reqwest::{Client, Method};
+use tar::Archive;
 use core::fmt;
 use std::{
     collections::HashMap,
@@ -20,7 +21,8 @@ pub fn is_unix_symbol(s: &str) -> bool {
 pub enum TarArchive {
     Gz,
     Xz,
-    Bz2
+    Bz2,
+    Lz,
 }
 
 impl fmt::Display for TarArchive {
@@ -29,6 +31,7 @@ impl fmt::Display for TarArchive {
             TarArchive::Gz => write!(f, ".tar.gz"),
             TarArchive::Xz => write!(f, ".tar.xz"),
             TarArchive::Bz2 => write!(f, ".tar.bz2"),
+            TarArchive::Lz => write!(f, ".tar.lz"),
         }
     }
 }
@@ -106,6 +109,7 @@ pub fn deflate_tar(flate_bytes: Vec<u8>, ext: &str) -> Result<Vec<u8>, Error> {
         ".tar.gz" => defalte_gz(flate_bytes),
         ".tar.xz" => deflate_xz(flate_bytes),
         ".tar.bz2" => deflate_bz2(flate_bytes),
+        ".tar.lz" => deflate_lz(flate_bytes),
         _ => {
             println!("Error: Unsupported extension");
             Err(Error::from(std::io::ErrorKind::InvalidInput))
@@ -137,6 +141,19 @@ fn deflate_xz(flate_bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
     }
 }
 
+fn deflate_lz(flate_bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
+    let mut output: Vec<u8> = Vec::new();
+    let mut input = &flate_bytes[..];
+
+    match lzma_rs::lzma_decompress(&mut input, &mut output) {
+        Ok(_) => Ok(output),
+        Err(e) => {
+            println!("Error: {}", e);
+            Err(Error::from(std::io::ErrorKind::Unsupported))
+        }
+    }
+}
+
 fn deflate_bz2(flate_bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
     let mut decoder = bzip2::read::BzDecoder::new(&flate_bytes[..]);
     let mut buffer: Vec<u8> = Vec::new();
@@ -154,4 +171,13 @@ pub fn fmt_package_path(basedir: &str, package_name: &str) -> String {
         return format!("{}/{}", basedir, package_name.split(".tar").next().unwrap());
     }
     format!("{}/{}", basedir, package_name)
+}
+
+pub fn to_archive(bytes: &Vec<u8>) {
+    let mut archive = Archive::new(bytes.as_slice());
+    archive.entries().unwrap().for_each(|entry| {
+        let entry = entry.unwrap();
+        let path = entry.path().unwrap();
+        println!("Path: {:?}", path);
+    });
 }
