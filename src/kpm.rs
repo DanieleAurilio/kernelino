@@ -151,9 +151,16 @@ impl KPM {
                     .or_else(|| filename.strip_suffix(TarArchive::Bz2.to_string().as_str()))
                     .unwrap();
                 self.write_downloaded_file(vfs, &deflate_bytes, package_name, "/bin");
-                self.packages.insert(package_name.to_string(), Package {
+                
+                let package_name_splitted = package_name.split("-").next();
+                let package_name_formatted = match package_name_splitted {
+                    Some(name) => name,
+                    None => package_name
+                };
+
+                self.packages.insert(package_name_formatted.to_string(), Package {
                     dependencies: vec![],
-                    name: package_name.to_string(),
+                    name: package_name_formatted.to_string(),
                     path: utils::fmt_package_path(KPM_BIN, package_name),
                     size: deflate_bytes.len() as u64,
                     version: version.to_string()
@@ -171,7 +178,10 @@ impl KPM {
         }
     }
 
-    pub fn execute(&self, mut vfs: RwLockWriteGuard<Vfs>, package_name: &str) {
+    pub async fn execute<'a>(&self, mut vfs: RwLockWriteGuard<'a, Vfs>, package_name: &str) {
+        self.packages.iter().for_each(|(name, package)| {
+            println!("Name: {} Version: {} Path: {}", name, package.version, package.path);
+        });
         let package = self.packages.get(package_name);
         if package.is_none() {
             println!("Package not found");
@@ -179,9 +189,11 @@ impl KPM {
         }
 
         let package = package.unwrap();
-        let path = package.path.as_str();
-        vfs.change_dir(path);
-        vfs.execute_file(package_name);
+        vfs.change_dir("/bin");
+
+        let filename = package.path.split("/").last().unwrap();
+        vfs.execute_file(filename).await;
+
         vfs.change_dir("/");
     }
 }

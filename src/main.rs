@@ -6,7 +6,8 @@ mod utils;
 mod vfs;
 mod vmm;
 mod vpm;
-mod libc;
+mod libx;
+mod elf;
 
 #[tokio::main]
 async fn main() {

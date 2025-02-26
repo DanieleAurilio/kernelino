@@ -22,6 +22,7 @@ enum ShellCommand {
     Top,
     KpmInstall(String),
     KpmList(),
+    KpmExec(String),
 }
 
 // Initialize the virtual file system
@@ -62,6 +63,9 @@ impl ShellCommand {
                 input.trim_start_matches("kpm install ").to_string(),
             )),
             _ if input.starts_with("kpm list") => Some(Self::KpmList()),
+            _ if input.starts_with("kpm exec") => Some(Self::KpmExec(
+                input.trim_start_matches("kpm exec ").to_string(),
+            )),
             _ => None,
         }
     }
@@ -85,6 +89,9 @@ impl ShellCommand {
                 cmd_kpm_install(package_name).await;
             },
             Self::KpmList() => cmd_kpm_list(),
+            Self::KpmExec(package_name) => {
+                cmd_kpm_exec(package_name).await;
+            },
         }
     }
 }
@@ -164,6 +171,7 @@ fn cmd_help() {
     println!("  top - Show the processes");
     println!("  kpm install <package> - Install a package");
     println!("  kpm list - List all available packages");
+    println!("  kpm exec <package> - Execute a package");
 }
 
 fn cmd_clear() {
@@ -222,4 +230,10 @@ fn cmd_top() {
 fn cmd_kpm_list() {
     let kpm_read = kpm.read().unwrap();
     kpm_read.list();
+}
+
+async fn cmd_kpm_exec(package_name: &str) {
+    let kpm_read = kpm.read().unwrap();
+    let vfs = VFS.write().unwrap();
+    kpm_read.execute(vfs, package_name).await;
 }

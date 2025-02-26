@@ -2,9 +2,7 @@
  * Virtual Memory Manager
  */
 use std::{cmp::min, collections::HashMap};
-use libc;
-
-use crate::utils::{self, SupportedOS};
+use crate::{elf::ELF, libx, utils::{self, SupportedOS}};
 
 const DEFAULT_PAGE_SIZE: u64 = 4096;
 
@@ -158,12 +156,13 @@ impl Vmm {
         bytes
     }
 
-    pub fn execute(&mut self, virtual_addresses: Vec<u64>) {
+    pub async fn execute(&mut self, virtual_addresses: Vec<u64>) {
         match utils::is_unix() {
             Some(os) => {
                 if os == SupportedOS::Linux.to_string() {
-                    self.execute_linux(virtual_addresses);
+                    self.execute_linux(virtual_addresses).await;
                 } else if os == SupportedOS::MacOS.to_string() {
+                    self.execute_linux(virtual_addresses).await;
                     println!("Not implemented yet");
                 } else {
                     panic!("Unsupported OS");
@@ -175,9 +174,14 @@ impl Vmm {
         }
     }
 
-    fn execute_linux(&mut self, virtual_addresses: Vec<u64>) {
-        let bytes = self.get_bytes(virtual_addresses, DEFAULT_PAGE_SIZE);
-        
-        libc::execv(prog, argv)
+    async fn execute_linux(&mut self, virtual_addresses: Vec<u64>) {
+        let pkg_bytes = self.get_bytes(virtual_addresses, DEFAULT_PAGE_SIZE);
+        let elf = ELF::new(pkg_bytes);
+        let elf_bytes = elf.to_bytes().await;
+
+        let memfd = libx::memfd_create("memfd_pkg", 0);
+        libx::write_memfd(memfd, &elf_bytes);
+        libx::execve_memfd(memfd);
+        libx::close_memfd(memfd);  
     }
 }
