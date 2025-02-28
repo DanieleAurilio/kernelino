@@ -2,9 +2,8 @@
  * Kernelino Package Manager
  *
  */
-use std::{collections::HashMap, io::Read, path::MAIN_SEPARATOR, sync::RwLockWriteGuard};
+use std::{collections::HashMap, io::Read, sync::RwLockWriteGuard};
 
-use libc::sleep;
 use serde_json::Value;
 
 use crate::{
