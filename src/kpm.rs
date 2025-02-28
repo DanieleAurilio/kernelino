@@ -186,9 +186,6 @@ impl Kpm {
                 continue;
             }
 
-            println!("Sono qui: ");
-            vfs.clone().pwd();
-
             let bytes: Vec<u8> = entry_ref.bytes().filter_map(Result::ok).collect();
             let path = entry_ref.path().unwrap();
             let file_name: &str = path.file_name().unwrap().to_str().unwrap();
