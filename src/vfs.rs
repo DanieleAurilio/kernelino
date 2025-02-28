@@ -142,7 +142,7 @@ impl Vfs {
             return;
         }
 
-        if dir == "/" {
+        if dir == SEPARATOR {
             self.cwd = PathBuf::from(SEPARATOR);
             return;
         }
@@ -157,6 +157,13 @@ impl Vfs {
             self.cwd = dir.path.clone();
         } else {
             println!("Directory not found");
+        }
+    }
+
+    pub fn change_dir_recursive(&mut self, dir: &str) {
+        let dirs = dir.split(SEPARATOR);
+        for dir in dirs {
+            self.change_dir(dir);
         }
     }
 
@@ -271,6 +278,25 @@ impl Vfs {
             file.vmm_address = virtual_addresses;
             file.path = PathBuf::from(filepath.unwrap());
         });
+    }
+
+    pub fn write_downloaded_file(
+        &mut self,
+        bytes: &Vec<u8>,
+        filename: &str,
+        basedir: &str,
+    ) {
+        self.change_dir_recursive(basedir);
+        self.touch(filename);
+
+        let package_dirpath = utils::fmt_package_path(basedir, filename);
+        self.write_file(
+            filename,
+            Some(bytes.clone()),
+            Some(package_dirpath.as_str()),
+        );
+
+        self.change_dir("/");
     }
 
     pub fn read_file(&mut self, filename: &str) {

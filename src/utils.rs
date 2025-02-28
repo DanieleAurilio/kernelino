@@ -10,7 +10,7 @@ use core::fmt;
 use std::{
     collections::HashMap,
     env,
-    io::{stdout, Error, Read},
+    io::{stdout, Error, Read}, process::Command,
 };
 
 pub fn is_unix_symbol(s: &str) -> bool {
@@ -106,10 +106,9 @@ pub fn is_unix() -> Option<String> {
 
 pub fn deflate_tar(flate_bytes: Vec<u8>, ext: &str) -> Result<Vec<u8>, Error> {
     match ext {
-        ".tar.gz" => defalte_gz(flate_bytes),
+        ".tar.gz" => deflate_gz(flate_bytes),
         ".tar.xz" => deflate_xz(flate_bytes),
         ".tar.bz2" => deflate_bz2(flate_bytes),
-        ".tar.lz" => deflate_lz(flate_bytes),
         _ => {
             println!("Error: Unsupported extension");
             Err(Error::from(std::io::ErrorKind::InvalidInput))
@@ -117,7 +116,7 @@ pub fn deflate_tar(flate_bytes: Vec<u8>, ext: &str) -> Result<Vec<u8>, Error> {
     }
 }
 
-fn defalte_gz(flate_bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
+fn deflate_gz(flate_bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
     let mut decoder = flate2::read::GzDecoder::new(&flate_bytes[..]);
     let mut buffer: Vec<u8> = Vec::new();
     match decoder.read_to_end(&mut buffer) {
@@ -141,19 +140,6 @@ fn deflate_xz(flate_bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
     }
 }
 
-fn deflate_lz(flate_bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
-    let mut output: Vec<u8> = Vec::new();
-    let mut input = &flate_bytes[..];
-
-    match lzma_rs::lzma_decompress(&mut input, &mut output) {
-        Ok(_) => Ok(output),
-        Err(e) => {
-            println!("Error: {}", e);
-            Err(Error::from(std::io::ErrorKind::Unsupported))
-        }
-    }
-}
-
 fn deflate_bz2(flate_bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
     let mut decoder = bzip2::read::BzDecoder::new(&flate_bytes[..]);
     let mut buffer: Vec<u8> = Vec::new();
@@ -173,11 +159,23 @@ pub fn fmt_package_path(basedir: &str, package_name: &str) -> String {
     format!("{}/{}", basedir, package_name)
 }
 
-pub fn to_archive(bytes: &Vec<u8>) {
-    let mut archive = Archive::new(bytes.as_slice());
-    archive.entries().unwrap().for_each(|entry| {
-        let entry = entry.unwrap();
-        let path = entry.path().unwrap();
-        println!("Path: {:?}", path);
-    });
+pub fn to_archive(bytes: &Vec<u8>) -> Archive<&[u8]> {
+    let archive = Archive::new(bytes.as_slice());
+    archive
+}
+
+pub fn is_package_lz(filename: &str) -> bool {
+    filename.contains(TarArchive::Lz.to_string().as_str())
+}
+
+pub fn replace_lz(filename: &str) -> String {
+    filename.replace(TarArchive::Lz.to_string().as_str(), TarArchive::Gz.to_string().as_str())
+}
+
+pub fn is_make_installed() -> bool {
+    let make = Command::new("make").arg("--version").output();
+    match make {
+        Ok(_) => true,
+        Err(_) => false,
+    }
 }

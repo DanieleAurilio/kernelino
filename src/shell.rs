@@ -1,8 +1,8 @@
-use crate::kpm::KPM;
-use crate::utils;
+use crate::kpm::Kpm;
+use crate::{utils, vfs};
 use lazy_static::lazy_static;
 use std::io::{self, Write};
-use std::sync::RwLock;
+use std::sync::{Arc, Mutex, RwLock};
 
 use crate::vfs::{init_vfs, Vfs};
 
@@ -27,8 +27,8 @@ enum ShellCommand {
 
 // Initialize the virtual file system
 lazy_static! {
-    static ref VFS: RwLock<Vfs> = RwLock::new(init_vfs());
-    static ref kpm: RwLock<KPM> = RwLock::new(KPM::init());
+    pub static ref VFS: RwLock<Vfs> = RwLock::new(init_vfs());
+    pub static ref kpm: RwLock<Kpm> = RwLock::new(Kpm::init());
 }
 
 impl ShellCommand {
