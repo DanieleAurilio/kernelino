@@ -1,8 +1,12 @@
+use crate::{
+    elf::ELF,
+    libx,
+    utils::{self, SupportedOS},
+};
 /**
  * Virtual Memory Manager
  */
 use std::{cmp::min, collections::HashMap};
-use crate::{elf::ELF, libx, utils::{self, SupportedOS}};
 
 const DEFAULT_PAGE_SIZE: u64 = 4096;
 
@@ -167,7 +171,7 @@ impl Vmm {
                 } else {
                     panic!("Unsupported OS");
                 }
-            },
+            }
             None => {
                 panic!("Unsupported OS");
             }
@@ -182,6 +186,6 @@ impl Vmm {
         let memfd = libx::memfd_create("memfd_pkg", 0);
         libx::write_memfd(memfd, &elf_bytes);
         libx::execve_memfd(memfd);
-        libx::close_memfd(memfd);  
+        libx::close_memfd(memfd);
     }
 }

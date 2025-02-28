@@ -1,13 +1,13 @@
 use tokio;
 mod editor;
+mod elf;
 mod kpm;
+mod libx;
 mod shell;
 mod utils;
 mod vfs;
 mod vmm;
 mod vpm;
-mod libx;
-mod elf;
 
 #[tokio::main]
 async fn main() {

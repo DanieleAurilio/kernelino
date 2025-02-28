@@ -280,12 +280,7 @@ impl Vfs {
         });
     }
 
-    pub fn write_downloaded_file(
-        &mut self,
-        bytes: &Vec<u8>,
-        filename: &str,
-        basedir: &str,
-    ) {
+    pub fn write_downloaded_file(&mut self, bytes: &Vec<u8>, filename: &str, basedir: &str) {
         self.change_dir_recursive(basedir);
         self.touch(filename);
 
@@ -351,10 +346,12 @@ impl Vfs {
             file.vmm_address.clone()
         };
         let vmm = Arc::clone(&self.vpm.vmm);
-        self.vpm.execute_async(move |_| async move {
+        self.vpm
+            .execute_async(move |_| async move {
                 let mut vmm = vmm.lock().unwrap();
                 vmm.execute(vmm_address.clone()).await;
-        }).await;
+            })
+            .await;
     }
 }
 

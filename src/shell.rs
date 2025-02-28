@@ -87,11 +87,11 @@ impl ShellCommand {
             Self::Top => cmd_top(),
             Self::KpmInstall(package_name) => {
                 cmd_kpm_install(package_name).await;
-            },
+            }
             Self::KpmList() => cmd_kpm_list(),
             Self::KpmExec(package_name) => {
                 cmd_kpm_exec(package_name).await;
-            },
+            }
         }
     }
 }

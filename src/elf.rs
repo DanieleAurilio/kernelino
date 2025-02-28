@@ -1,11 +1,11 @@
-use std::io::{Cursor, Write};
 use byteordered::{self, byteorder::LittleEndian, byteorder::WriteBytesExt};
+use std::io::{Cursor, Write};
 
 /**
  * This file contains the ELF struct and its implementation.
  * Kernelino uses the ELF format to load and execute binaries.
  * ELF is loaded in memory and executed by the VMM.
- * 
+ *
  * https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
  */
 
@@ -53,7 +53,7 @@ struct ELFSection {
     body: Vec<u8>,
 }
 
-impl ELF { 
+impl ELF {
     pub fn new(bytes: Vec<u8>) -> Self {
         let elf_header: ELFHeader = ELFHeader {
             magic_number: 0x7F454C46,
@@ -89,9 +89,7 @@ impl ELF {
             program_header_align: 0x200000,
         };
 
-        let elf_section: ELFSection = ELFSection {
-            body: bytes,
-        };
+        let elf_section: ELFSection = ELFSection { body: bytes };
 
         Self {
             header: elf_header,
@@ -112,7 +110,9 @@ impl ELF {
         cursor.write_u8(self.header.version);
         cursor.write_u8(self.header.os_abi);
         cursor.write_u8(self.header.abi_version);
-        self.header.padding.iter().for_each(|&x| { cursor.write_u8(x); });
+        self.header.padding.iter().for_each(|&x| {
+            cursor.write_u8(x);
+        });
         cursor.write_u16::<LittleEndian>(self.header.file_type);
         cursor.write_u16::<LittleEndian>(self.header.machine);
         cursor.write_u8(self.header.version_elf);
@@ -142,5 +142,4 @@ impl ELF {
 
         elf_bytes
     }
-
 }

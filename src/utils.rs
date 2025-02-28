@@ -4,14 +4,15 @@ use crossterm::{
     ExecutableCommand,
 };
 
-use reqwest::{Client, Method};
-use tar::Archive;
 use core::fmt;
+use reqwest::{Client, Method};
 use std::{
     collections::HashMap,
     env,
-    io::{stdout, Error, Read}, process::Command,
+    io::{stdout, Error, Read},
+    process::Command,
 };
+use tar::Archive;
 
 pub fn is_unix_symbol(s: &str) -> bool {
     const PROTECTED_SYMBOL: [&str; 3] = ["/", ".", ".."];
@@ -169,7 +170,10 @@ pub fn is_package_lz(filename: &str) -> bool {
 }
 
 pub fn replace_lz(filename: &str) -> String {
-    filename.replace(TarArchive::Lz.to_string().as_str(), TarArchive::Gz.to_string().as_str())
+    filename.replace(
+        TarArchive::Lz.to_string().as_str(),
+        TarArchive::Gz.to_string().as_str(),
+    )
 }
 
 pub fn is_make_installed() -> bool {

@@ -186,7 +186,6 @@ impl Kpm {
                 continue;
             }
 
-   
             println!("Sono qui: ");
             vfs.clone().pwd();
 
@@ -197,7 +196,6 @@ impl Kpm {
             let dir_path = path_split.next().unwrap();
 
             let dir_path_formatted = format!("{}/{}", KPM_BIN, dir_path);
-            
 
             vfs.write_downloaded_file(&bytes, file_name, &dir_path_formatted);
         }

@@ -9,7 +9,8 @@ use std::{
     sync::{
         atomic::{AtomicU32, Ordering},
         Arc, Mutex,
-    }, time::Duration
+    },
+    time::Duration,
 };
 
 static NEXT_PID: AtomicU32 = AtomicU32::new(1);
@@ -76,7 +77,7 @@ impl Vpm {
         F: FnOnce(&Self) -> Fut,
         Fut: std::future::Future<Output = ()> + 'static,
     {
-       func(&self).await;
+        func(&self).await;
     }
 
     pub fn show_processes(&self) {
