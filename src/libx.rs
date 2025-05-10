@@ -6,6 +6,7 @@ use std::ffi::CString;
 
 use libc;
 
+#[cfg(target_arch = "x86_64")]
 pub fn memfd_create(name: &str, flags: i32) -> i32 {
     let c_name = CString::new(name).unwrap();
     unsafe {
@@ -13,6 +14,11 @@ pub fn memfd_create(name: &str, flags: i32) -> i32 {
             .try_into()
             .unwrap()
     }
+}
+
+#[cfg(not(target_arch = "x86_64"))]
+pub fn memfd_create(_name: &str, _flags: i32) -> i32 {
+    panic!("memfd_create is only supported on x86_64 Linux")
 }
 
 pub fn write_memfd(memfd: i32, data: &[u8]) {

@@ -5,7 +5,7 @@ use crossterm::{
 };
 
 use core::fmt;
-use reqwest::{Client, Method};
+use reqwest::{header, Client, Method};
 use std::{
     collections::HashMap,
     env,
@@ -62,6 +62,8 @@ pub async fn http_async_get(
     print_download_percentage: bool,
 ) -> Option<Vec<u8>> {
     let mut request = Client::new().request(Method::GET, url);
+    request = request.header(header::USER_AGENT, "Mozilla/5.0 (Rust async downloader)");
+
     if params.is_some() {
         request = request.query(&params.unwrap());
     }
