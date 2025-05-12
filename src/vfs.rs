@@ -334,9 +334,17 @@ impl Vfs {
     }
 
     pub async fn execute_file(&mut self, filename: &str) {
+        // If the file is not present into the cwd, check for a subdirectory
         let file = self.get_file_in_cwd(filename);
         if file.is_none() {
-            println!("File not found");
+            let full_path = format!("{}{}{}", self.cwd.as_os_str().to_str().unwrap(), "/", filename);
+            let dir_opt = self.get_dir_in_vfs(&full_path).map(|dir| dir.clone());
+            if let Some(dir) = dir_opt {
+                self.recreate_directory_into_fs_tmp(dir).await
+            } else {
+                println!("{} is not found.", full_path);
+            }
+            
             return;
         }
 
@@ -352,6 +360,10 @@ impl Vfs {
                 vmm.execute(vmm_address.clone()).await;
             })
             .await;
+    }
+
+    async fn recreate_directory_into_fs_tmp(&mut self, directory_to_recreate: Directory) {
+        todo!("Add recreate_directory_into_fs_tmp {:?}", directory_to_recreate.name);
     }
 }
 
