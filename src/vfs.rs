@@ -2,6 +2,7 @@ use crate::editor::Editor;
 use crate::utils;
 use crate::vmm::Vmm;
 use crate::vpm::Vpm;
+use std::env;
 use std::sync::{Arc, Mutex};
 use std::{collections::HashMap, path::PathBuf};
 
@@ -284,7 +285,7 @@ impl Vfs {
         self.change_dir_recursive(basedir);
         self.touch(filename);
 
-        let package_dirpath = utils::fmt_package_path(basedir, filename);
+        let package_dirpath = format!("{}{}",basedir, filename);
         self.write_file(
             filename,
             Some(bytes.clone()),
@@ -337,14 +338,21 @@ impl Vfs {
         // If the file is not present into the cwd, check for a subdirectory
         let file = self.get_file_in_cwd(filename);
         if file.is_none() {
-            let full_path = format!("{}{}{}", self.cwd.as_os_str().to_str().unwrap(), "/", filename);
+            let full_path = format!(
+                "{}{}{}",
+                self.cwd.as_os_str().to_str().unwrap(),
+                "/",
+                filename
+            );
             let dir_opt = self.get_dir_in_vfs(&full_path).map(|dir| dir.clone());
             if let Some(dir) = dir_opt {
-                self.recreate_directory_into_fs_tmp(dir).await
+                println!("Start recreating directory into tmp!");
+                self.recreate_directory_into_fs_tmp(dir).await;
+                println!("Recreate directory to tmp finished");
             } else {
                 println!("{} is not found.", full_path);
             }
-            
+
             return;
         }
 
@@ -362,8 +370,38 @@ impl Vfs {
             .await;
     }
 
-    async fn recreate_directory_into_fs_tmp(&mut self, directory_to_recreate: Directory) {
-        todo!("Add recreate_directory_into_fs_tmp {:?}", directory_to_recreate.name);
+    fn recreate_directory_into_fs_tmp<'a>(
+        &'a mut self,
+        directory_to_recreate: Directory,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + 'a>> {
+        Box::pin(async move {
+            utils::create_temp_dir_fs(utils::from_pathbuf_to_string(
+                directory_to_recreate.path.clone(),
+            ));
+            if directory_to_recreate.files.len() > 0 {
+                for file in directory_to_recreate.files {
+                    let mux_file = file.1.lock().unwrap();
+                    let mux_mem = self.vpm.vmm.lock().unwrap();
+                    let file_bytes = mux_mem.get_bytes(mux_file.vmm_address.clone(), 4096);
+
+                    let temp_filepath = format!(
+                        "{}/test/{}",
+                        env::temp_dir().clone().to_str().unwrap(),
+                        utils::from_pathbuf_to_string(mux_file.path.clone())
+                    );
+
+                    println!("creating temp file to {}", temp_filepath);
+                    utils::create_file(temp_filepath, file_bytes);
+
+                    drop(mux_file);
+                    drop(mux_mem);
+                }
+            }
+
+            for (_, subdir_current) in directory_to_recreate.subdirectories {
+                self.recreate_directory_into_fs_tmp(subdir_current).await;
+            }
+        })
     }
 }
 

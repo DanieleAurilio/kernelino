@@ -9,7 +9,9 @@ use reqwest::{header, Client, Method};
 use std::{
     collections::HashMap,
     env,
-    io::{stdout, Error, Read},
+    fs::{create_dir_all, File},
+    io::{stdout, Error, Read, Write},
+    path::PathBuf,
     process::Command,
 };
 use tar::Archive;
@@ -184,4 +186,27 @@ pub fn is_make_installed() -> bool {
         Ok(_) => true,
         Err(_) => false,
     }
+}
+
+pub fn create_temp_dir_fs(dirpathname: String) {
+    let mut path_buf = env::temp_dir();
+    path_buf.push("test");
+    path_buf.push(dirpathname);
+    match create_dir_all(path_buf) {
+        Ok(_) => println!("Created temp directory"),
+        Err(err) => panic!("Error creating temp directory: {:?}", err),
+    }
+}
+
+pub fn create_file(filepath: String, bytes: Vec<u8>) {
+    match File::create_new(&filepath) {
+        Ok(mut file) => {
+            let _ = file.write_all(&bytes);
+        }
+        Err(err) => panic!("Cannot create file {} Error: {:?}", &filepath, err),
+    }
+}
+
+pub fn from_pathbuf_to_string(path_buf: PathBuf) -> String {
+    path_buf.as_os_str().to_str().unwrap().to_string()
 }
