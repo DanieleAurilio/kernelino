@@ -1,4 +1,3 @@
-use crate::kpm::KPM;
 use crate::utils;
 use lazy_static::lazy_static;
 use std::io::{self, Write};
@@ -20,14 +19,11 @@ enum ShellCommand {
     WriteFile(String),
     ReadFile(String),
     Top,
-    KpmInstall(String),
-    KpmList(),
 }
 
 // Initialize the virtual file system
 lazy_static! {
     static ref VFS: RwLock<Vfs> = RwLock::new(init_vfs());
-    static ref kpm: RwLock<KPM> = RwLock::new(KPM::init());
 }
 
 impl ShellCommand {
@@ -58,10 +54,6 @@ impl ShellCommand {
             _ if input.starts_with("read") => Some(Self::ReadFile(
                 input.trim_start_matches("read ").to_string(),
             )),
-            _ if input.starts_with("kpm install") => Some(Self::KpmInstall(
-                input.trim_start_matches("kpm install ").to_string(),
-            )),
-            _ if input.starts_with("kpm list") => Some(Self::KpmList()),
             _ => None,
         }
     }
@@ -80,11 +72,7 @@ impl ShellCommand {
             Self::Touch(filename) => cmd_touch(filename),
             Self::WriteFile(filename) => cmd_write_file(filename),
             Self::ReadFile(filename) => cmd_read_file(filename),
-            Self::Top => cmd_top(),
-            Self::KpmInstall(package_name) => {
-                cmd_kpm_install(package_name).await;
-            },
-            Self::KpmList() => cmd_kpm_list(),
+            Self::Top => cmd_top()
         }
     }
 }
@@ -118,30 +106,6 @@ fn init_base_fs() {
     cmd_touch(".env");
 }
 
-async fn cmd_kpm_install(package_name: &str) {
-    let mut mut_kpm = kpm.write().unwrap();
-
-    let package_download_info = mut_kpm.download(package_name).await;
-    let package_bytes = package_download_info.0;
-    let package_filename = package_download_info.1;
-    let package_version = package_download_info.2;
-    if package_bytes.is_none() || package_filename.is_none() || package_version.is_none() {
-        return;
-    }
-
-    let package_fullname_tmp = package_filename.unwrap();
-    let vfs = VFS.write().unwrap();
-    mut_kpm.install(
-        vfs,
-        package_bytes.as_ref().unwrap(),
-        package_fullname_tmp.as_str(),
-        package_version.as_ref().unwrap(),
-    );
-
-    println!("Package installed successfully!");
-
-    return;
-}
 
 fn cmd_exit() {
     println!("Goodbye!");
@@ -217,9 +181,4 @@ fn cmd_read_file(filename: &str) {
 fn cmd_top() {
     let vfs = VFS.read().unwrap().clone();
     vfs.vpm.show_processes()
-}
-
-fn cmd_kpm_list() {
-    let kpm_read = kpm.read().unwrap();
-    kpm_read.list();
 }
