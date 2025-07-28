@@ -148,8 +148,15 @@ impl Vfs {
         }
 
         if dir == ".." {
-            self.cwd = self.cwd.parent().unwrap().to_path_buf();
-            return;
+            match self.cwd.parent() {
+                Some(parent) => {
+                    self.cwd = parent.to_path_buf();
+                    return;
+                },
+                None => {
+                    return
+                }
+            }
         }
 
         let dir_to = self.get_dir_in_vfs(self.cwd.join(dir).to_str().unwrap());
