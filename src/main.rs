@@ -1,6 +1,5 @@
 use tokio;
 mod editor;
-mod kpm;
 mod shell;
 mod utils;
 mod vfs;
