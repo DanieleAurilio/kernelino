@@ -1,4 +1,4 @@
-use crate::utils;
+use crate::{lua::Lua, utils};
 use lazy_static::lazy_static;
 use std::io::{self, Write};
 use std::sync::RwLock;
@@ -19,6 +19,7 @@ enum ShellCommand {
     WriteFile(String),
     ReadFile(String),
     Top,
+    Luac(String),
 }
 
 // Initialize the virtual file system
@@ -54,6 +55,9 @@ impl ShellCommand {
             _ if input.starts_with("read") => Some(Self::ReadFile(
                 input.trim_start_matches("read ").to_string(),
             )),
+            _ if input.starts_with("luac") => Some(Self::Luac(
+                input.trim_start_matches("luac ").to_string(),
+            )),
             _ => None,
         }
     }
@@ -72,7 +76,8 @@ impl ShellCommand {
             Self::Touch(filename) => cmd_touch(filename),
             Self::WriteFile(filename) => cmd_write_file(filename),
             Self::ReadFile(filename) => cmd_read_file(filename),
-            Self::Top => cmd_top()
+            Self::Top => cmd_top(),
+            Self::Luac(filename) => cmd_luac(filename),
         }
     }
 }
@@ -181,4 +186,10 @@ fn cmd_read_file(filename: &str) {
 fn cmd_top() {
     let vfs = VFS.read().unwrap().clone();
     vfs.vpm.show_processes()
+}
+
+fn cmd_luac(filepath: &str) {
+    let vfs = VFS.read().unwrap().clone();
+    let luac = Lua::new();
+    luac.run(&vfs, filepath);
 }

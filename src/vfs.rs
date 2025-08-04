@@ -17,7 +17,7 @@ pub struct File {
 }
 
 #[derive(Debug, Clone)]
-struct Directory {
+pub struct Directory {
     name: String,
     parent: Option<Box<Directory>>,
     files: HashMap<String, Arc<Mutex<File>>>,
@@ -39,8 +39,8 @@ impl Directory {
 
 #[derive(Debug, Clone)]
 pub struct Vfs {
-    root: Directory,
-    cwd: PathBuf,
+    pub root: Directory,
+    pub cwd: PathBuf,
     pub vpm: Vpm,
 }
 
@@ -152,10 +152,8 @@ impl Vfs {
                 Some(parent) => {
                     self.cwd = parent.to_path_buf();
                     return;
-                },
-                None => {
-                    return
                 }
+                None => return,
             }
         }
 
@@ -317,6 +315,42 @@ impl Vfs {
             }
         }
         Some(current_dir)
+    }
+
+    pub fn search_file_recursive(
+        &self,
+        filepath: &str,
+        current_dir: &Directory,
+    ) -> Option<Arc<Mutex<File>>> {
+        if current_dir.files.contains_key(filepath) {
+           return Some(current_dir.files.get(filepath).unwrap().clone());
+        }
+
+        if filepath.contains(SEPARATOR) {
+            let dirs = filepath.split(SEPARATOR);
+            for dir in dirs {
+                if current_dir.subdirectories.contains_key(dir) {
+                    self.search_file_recursive(
+                        filepath,
+                        current_dir.subdirectories.get(dir).unwrap(),
+                    );
+                }
+            }
+        }
+
+        return None;
+    }
+
+    pub fn read_file_content_bytes_to_utf8(&self, file: &File) -> Option<String> {
+        let vmm_mux = self.vpm.vmm.lock().unwrap();
+        let file_content_bytes = vmm_mux.get_bytes(file.vmm_address.clone(), 4096);
+        match String::from_utf8(file_content_bytes) {
+            Ok(content) => Some(content),
+            Err(_) => {
+                println!("Error reading file {}", file.name);
+                None
+            }
+        }
     }
 }
 
