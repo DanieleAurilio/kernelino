@@ -1,6 +1,5 @@
 #[derive(Debug, Clone)]
 pub enum Token {
-    Identifier(String),
     Integer(i64),
     Float(f64),
     String(String),
@@ -37,8 +36,8 @@ impl Lexer {
                 continue;
             }
 
-            if let Some(token_keyword_identifier) = self.is_keyword_or_identifier() {
-                tokens.push(token_keyword_identifier);
+            if let Some(token_keyword_string) = self.is_keyword_or_string() {
+                tokens.push(token_keyword_string);
             }
 
             if let Some(token_number) = self.read_number() {
@@ -66,7 +65,7 @@ impl Lexer {
         }
     }
 
-    fn is_keyword_or_identifier(&mut self) -> Option<Token> {
+    fn is_keyword_or_string(&mut self) -> Option<Token> {
         let mut keyword: String = String::new();
         while let Some(char) = self.get_current_char() {
             if char.is_alphabetic() || char.is_ascii_alphabetic() || char == '_' {
@@ -82,7 +81,7 @@ impl Lexer {
                 "local" => {
                     return Some(Token::Local);
                 }
-                _ => Some(Token::Identifier(keyword)),
+                _ => Some(Token::String(keyword)),
             }
         } else {
             return None;
