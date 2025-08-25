@@ -99,6 +99,10 @@ impl Lexer {
                     self.advance();
                     return Some(Token::DoubleQuote);
                 }
+                '+' => {
+                    self.advance();
+                    return Some(Token::Plus);
+                }
                 _ => {}
             }
         }
