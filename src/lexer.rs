@@ -10,6 +10,10 @@ pub enum Token {
     Assign,
     DoubleQuote,
     Plus,
+    Minus,
+    Divider,
+    Modulo,
+    Multiplier,
     Eof,
 }
 
@@ -102,6 +106,22 @@ impl Lexer {
                 '+' => {
                     self.advance();
                     return Some(Token::Plus);
+                }
+                '-' => {
+                    self.advance();
+                    return Some(Token::Minus);
+                }
+                '%' => {
+                    self.advance();
+                    return Some(Token::Modulo);
+                }
+                '*' => {
+                    self.advance();
+                    return Some(Token::Multiplier);
+                }
+                '/' => {
+                    self.advance();
+                    return Some(Token::Divider);
                 }
                 _ => {}
             }
