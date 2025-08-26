@@ -1,9 +1,12 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
+    Identifier(String),
+
     //Types
     Integer(i64),
     Float(f64),
     String(String),
+    Boolean(bool),
 
     //Keywords
     Local,
@@ -46,15 +49,18 @@ impl Lexer {
                 continue;
             }
 
-            if let Some(assign_token) = self.evaluate_sign() {
-                if self.skip_sign_in_double_qoute(assign_token.clone()) == false {
-                    tokens.push(assign_token);
-                    continue;
-                }
+            if let Some(token_keyword) = self.read_keyword() {
+                tokens.push(token_keyword);
+                continue;
             }
 
-            if let Some(token_keyword_string) = self.is_keyword_or_string() {
-                tokens.push(token_keyword_string);
+            if let Some(token_sign) = self.evaluate_sign() {
+                tokens.push(token_sign);
+                continue;
+            }
+
+            if let Some(token_string) = self.read_string() {
+                tokens.push(token_string);
                 continue;
             }
 
@@ -84,25 +90,19 @@ impl Lexer {
         }
     }
 
-    fn is_keyword_or_string(&mut self) -> Option<Token> {
-        let mut keyword: String = String::new();
+    fn read_string(&mut self) -> Option<Token> {
+        let mut str: String = String::new();
         while let Some(char) = self.get_current_char() {
-            if char.is_alphabetic() || char.is_ascii_alphabetic() || char == '_' || (self.seen_double_quote == true && char.is_ascii_punctuation())  {
-                keyword.push(char);
+            if self.seen_double_quote == true && self.is_char_valid(char, true) {
+                str.push(char);
                 self.advance();
             } else {
                 break;
             }
         }
 
-        if keyword.len() > 0 {
-            match keyword.as_str() {
-                "local" => {
-                    return Some(Token::Local);
-                }
-                "print" => return Some(Token::Print),
-                _ => Some(Token::String(keyword)),
-            }
+        if str.len() > 0 {
+            return Some(Token::String(str));
         } else {
             return None;
         }
@@ -116,6 +116,7 @@ impl Lexer {
                     return Some(Token::Assign);
                 }
                 '"' => {
+                    self.set_seen_double_quote();
                     self.advance();
                     return Some(Token::DoubleQuote);
                 }
@@ -140,20 +141,12 @@ impl Lexer {
                     return Some(Token::Divider);
                 }
                 '(' => {
-                    if self.seen_double_quote == false {
-                        self.advance();
-                        return Some(Token::LParen);
-                    } else {
-                        return None;
-                    }
+                    self.advance();
+                    return Some(Token::LParen);
                 }
                 ')' => {
-                    if self.seen_double_quote == false {
-                        self.advance();
-                        return Some(Token::RParen);
-                    } else {
-                        return None;
-                    }
+                    self.advance();
+                    return Some(Token::RParen);
                 }
                 _ => {}
             }
@@ -200,6 +193,31 @@ impl Lexer {
         }
     }
 
+    fn read_keyword(&mut self) -> Option<Token> {
+        let mut keyword = String::new();
+
+        while let Some(char) = self.get_current_char() {
+            if self.seen_double_quote == false && char.is_alphabetic() {
+                keyword.push(char);
+                self.advance();
+            } else {
+                break;
+            }
+        }
+
+        if keyword.len() == 0 {
+            return None;
+        }
+
+        match keyword.as_str() {
+            "local" => return Some(Token::Local),
+            "print" => return Some(Token::Print),
+            "false" => return Some(Token::Boolean(false)),
+            "true" => return Some(Token::Boolean(true)),
+            _ => return Some(Token::Identifier(keyword)),
+        }
+    }
+
     fn advance(&mut self) {
         self.position += 1;
     }
@@ -208,15 +226,23 @@ impl Lexer {
         self.input.chars().nth(self.position)
     }
 
-    fn skip_sign_in_double_qoute(&mut self, token: Token) -> bool {
-        if token == Token::DoubleQuote {
-            if self.seen_double_quote == true {
-                self.seen_double_quote = false;
-            } else {
-                self.seen_double_quote = true;
-            }
+    fn set_seen_double_quote(&mut self) {
+        if self.seen_double_quote == true {
+            self.seen_double_quote = false;
+        } else {
+            self.seen_double_quote = true;
         }
+    }
 
-        return self.seen_double_quote;
+    fn is_char_valid(&self, char: char, include_punctuation: bool) -> bool {
+        if char.is_alphabetic()
+            || char.is_ascii_alphabetic()
+            || (include_punctuation == true && char != '"' && char.is_ascii_punctuation())
+            || char == '_'
+        {
+            true
+        } else {
+            false
+        }
     }
 }
