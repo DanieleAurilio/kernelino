@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     //Types
     Integer(i64),
@@ -26,11 +26,16 @@ pub enum Token {
 pub struct Lexer {
     input: String,
     position: usize,
+    seen_double_quote: bool,
 }
 
 impl Lexer {
     pub fn new(input: String) -> Self {
-        Self { input, position: 0 }
+        Self {
+            input,
+            position: 0,
+            seen_double_quote: false,
+        }
     }
 
     pub fn read_input(&mut self) -> Vec<Token> {
@@ -42,8 +47,10 @@ impl Lexer {
             }
 
             if let Some(assign_token) = self.evaluate_sign() {
-                tokens.push(assign_token);
-                continue;
+                if self.skip_sign_in_double_qoute(assign_token.clone()) == false {
+                    tokens.push(assign_token);
+                    continue;
+                }
             }
 
             if let Some(token_keyword_string) = self.is_keyword_or_string() {
@@ -80,7 +87,7 @@ impl Lexer {
     fn is_keyword_or_string(&mut self) -> Option<Token> {
         let mut keyword: String = String::new();
         while let Some(char) = self.get_current_char() {
-            if char.is_alphabetic() || char.is_ascii_alphabetic() || char == '_' {
+            if char.is_alphabetic() || char.is_ascii_alphabetic() || char == '_' || (self.seen_double_quote == true && char.is_ascii_punctuation())  {
                 keyword.push(char);
                 self.advance();
             } else {
@@ -93,9 +100,7 @@ impl Lexer {
                 "local" => {
                     return Some(Token::Local);
                 }
-                "print" => {
-                    return Some(Token::Print)
-                }
+                "print" => return Some(Token::Print),
                 _ => Some(Token::String(keyword)),
             }
         } else {
@@ -135,12 +140,20 @@ impl Lexer {
                     return Some(Token::Divider);
                 }
                 '(' => {
-                    self.advance();
-                    return Some(Token::LParen);
+                    if self.seen_double_quote == false {
+                        self.advance();
+                        return Some(Token::LParen);
+                    } else {
+                        return None;
+                    }
                 }
                 ')' => {
-                    self.advance();
-                    return Some(Token::RParen);
+                    if self.seen_double_quote == false {
+                        self.advance();
+                        return Some(Token::RParen);
+                    } else {
+                        return None;
+                    }
                 }
                 _ => {}
             }
@@ -193,5 +206,17 @@ impl Lexer {
 
     fn get_current_char(&mut self) -> Option<char> {
         self.input.chars().nth(self.position)
+    }
+
+    fn skip_sign_in_double_qoute(&mut self, token: Token) -> bool {
+        if token == Token::DoubleQuote {
+            if self.seen_double_quote == true {
+                self.seen_double_quote = false;
+            } else {
+                self.seen_double_quote = true;
+            }
+        }
+
+        return self.seen_double_quote;
     }
 }
