@@ -1,12 +1,15 @@
 #[derive(Debug, Clone)]
 pub enum Token {
+    //Types
     Integer(i64),
     Float(f64),
     String(String),
 
     //Keywords
     Local,
+    Print,
 
+    //Signs
     Assign,
     DoubleQuote,
     Plus,
@@ -14,6 +17,9 @@ pub enum Token {
     Divider,
     Modulo,
     Multiplier,
+    LParen,
+    RParen,
+
     Eof,
 }
 
@@ -42,10 +48,12 @@ impl Lexer {
 
             if let Some(token_keyword_string) = self.is_keyword_or_string() {
                 tokens.push(token_keyword_string);
+                continue;
             }
 
             if let Some(token_number) = self.read_number() {
                 tokens.push(token_number);
+                continue;
             }
         }
 
@@ -85,6 +93,9 @@ impl Lexer {
                 "local" => {
                     return Some(Token::Local);
                 }
+                "print" => {
+                    return Some(Token::Print)
+                }
                 _ => Some(Token::String(keyword)),
             }
         } else {
@@ -122,6 +133,14 @@ impl Lexer {
                 '/' => {
                     self.advance();
                     return Some(Token::Divider);
+                }
+                '(' => {
+                    self.advance();
+                    return Some(Token::LParen);
+                }
+                ')' => {
+                    self.advance();
+                    return Some(Token::RParen);
                 }
                 _ => {}
             }
