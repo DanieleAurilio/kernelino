@@ -11,6 +11,7 @@ pub enum Token {
     //Keywords
     Local,
     Print,
+    If,
 
     //Signs
     Assign,
@@ -22,6 +23,11 @@ pub enum Token {
     Multiplier,
     LParen,
     RParen,
+    LBrace,
+    RBrace,
+    Gt,
+    Eq,
+    Lt,
 
     Eof,
 }
@@ -112,8 +118,15 @@ impl Lexer {
         if let Some(char) = self.get_current_char() {
             match char {
                 '=' => {
-                    self.advance();
-                    return Some(Token::Assign);
+                    if let Some(peek_char) = self.get_next_char() {
+                        if peek_char == '=' {
+                            self.advance();
+                            return Some(Token::Eq);
+                        }
+                    } else {
+                        self.advance();
+                        return Some(Token::Assign);
+                    }
                 }
                 '"' => {
                     self.set_seen_double_quote();
@@ -148,6 +161,22 @@ impl Lexer {
                     self.advance();
                     return Some(Token::RParen);
                 }
+                '{' => {
+                    self.advance();
+                    return Some(Token::LBrace);
+                }
+                '}' => {
+                    self.advance();
+                    return Some(Token::RBrace);
+                }
+                '>' => {
+                    self.advance();
+                    return Some(Token::Gt);
+                }
+                '<' => {
+                    self.advance();
+                    return Some(Token::Lt);
+                }
                 _ => {}
             }
         }
@@ -163,6 +192,14 @@ impl Lexer {
         }
 
         return true;
+    }
+
+    fn get_next_char(&self) -> Option<char> {
+        if let Some(char) = self.input.chars().nth(self.position + 1) {
+            return Some(char);
+        } else {
+            return None;
+        }
     }
 
     fn read_number(&mut self) -> Option<Token> {
@@ -214,6 +251,7 @@ impl Lexer {
             "print" => return Some(Token::Print),
             "false" => return Some(Token::Boolean(false)),
             "true" => return Some(Token::Boolean(true)),
+            "if" => return Some(Token::If),
             _ => return Some(Token::Identifier(keyword)),
         }
     }
