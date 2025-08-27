@@ -29,6 +29,11 @@ pub enum Token {
     Eq,
     Lt,
 
+    Not,
+    NotEq,
+    GtEq,
+    LtEq,
+
     Eof,
 }
 
@@ -170,12 +175,37 @@ impl Lexer {
                     return Some(Token::RBrace);
                 }
                 '>' => {
-                    self.advance();
-                    return Some(Token::Gt);
+                    if let Some(peek_char) = self.get_next_char() {
+                        if peek_char == '=' {
+                            self.advance();
+                            return Some(Token::GtEq);
+                        }
+                    } else {
+                        self.advance();
+                        return Some(Token::Gt);
+                    }
                 }
                 '<' => {
-                    self.advance();
-                    return Some(Token::Lt);
+                    if let Some(peek_char) = self.get_next_char() {
+                        if peek_char == '=' {
+                            self.advance();
+                            return Some(Token::LtEq);
+                        }
+                    } else {
+                        self.advance();
+                        return Some(Token::Lt);
+                    }
+                }
+                '!' => {
+                    if let Some(peek_char) = self.get_next_char() {
+                        if peek_char == '=' {
+                            self.advance();
+                            return Some(Token::NotEq);
+                        }
+                    } else {
+                        self.advance();
+                        return Some(Token::Not);
+                    }
                 }
                 _ => {}
             }
