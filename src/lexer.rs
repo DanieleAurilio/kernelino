@@ -10,8 +10,19 @@ pub enum Token {
 
     //Keywords
     Local,
+    Nil,
     Print,
     If,
+    Then,
+    Elseif,
+    Else,
+    End,
+    For,
+    Do,
+    While,
+    Repeat,
+    Break,
+    Until,
 
     //Signs
     Assign,
@@ -282,6 +293,17 @@ impl Lexer {
             "false" => return Some(Token::Boolean(false)),
             "true" => return Some(Token::Boolean(true)),
             "if" => return Some(Token::If),
+            "then" => return Some(Token::Then),
+            "elseif" => return Some(Token::Elseif),
+            "else" => return Some(Token::Else),
+            "end" => return Some(Token::End),
+            "for" => return Some(Token::For),
+            "do" => return Some(Token::Do),
+            "while" => return Some(Token::While),
+            "repeat" => return Some(Token::Repeat),
+            "until" => return Some(Token::Until),
+            "break" => return Some(Token::Break),
+            "nil" => return Some(Token::Nil),
             _ => return Some(Token::Identifier(keyword)),
         }
     }
