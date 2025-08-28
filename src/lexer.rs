@@ -331,6 +331,7 @@ impl Lexer {
             || char.is_ascii_alphabetic()
             || (include_punctuation == true && char != '"' && char.is_ascii_punctuation())
             || char == '_'
+            || char == ' '
         {
             true
         } else {
