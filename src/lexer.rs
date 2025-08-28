@@ -23,6 +23,7 @@ pub enum Token {
     Repeat,
     Break,
     Until,
+    Function,
 
     //Signs
     Assign,
@@ -304,6 +305,7 @@ impl Lexer {
             "until" => return Some(Token::Until),
             "break" => return Some(Token::Break),
             "nil" => return Some(Token::Nil),
+            "function" => return Some(Token::Function),
             _ => return Some(Token::Identifier(keyword)),
         }
     }
