@@ -140,10 +140,9 @@ impl Lexer {
                             self.advance();
                             return Some(Token::Eq);
                         }
-                    } else {
-                        self.advance();
-                        return Some(Token::Assign);
                     }
+                    self.advance();
+                    return Some(Token::Assign);
                 }
                 '"' => {
                     self.set_seen_double_quote();
@@ -192,10 +191,9 @@ impl Lexer {
                             self.advance();
                             return Some(Token::GtEq);
                         }
-                    } else {
-                        self.advance();
-                        return Some(Token::Gt);
                     }
+                    self.advance();
+                    return Some(Token::Gt);
                 }
                 '<' => {
                     if let Some(peek_char) = self.get_next_char() {
@@ -203,10 +201,9 @@ impl Lexer {
                             self.advance();
                             return Some(Token::LtEq);
                         }
-                    } else {
-                        self.advance();
-                        return Some(Token::Lt);
                     }
+                    self.advance();
+                    return Some(Token::Lt);
                 }
                 '!' => {
                     if let Some(peek_char) = self.get_next_char() {
@@ -214,10 +211,9 @@ impl Lexer {
                             self.advance();
                             return Some(Token::NotEq);
                         }
-                    } else {
-                        self.advance();
-                        return Some(Token::Not);
                     }
+                    self.advance();
+                    return Some(Token::Not);
                 }
                 _ => {}
             }
