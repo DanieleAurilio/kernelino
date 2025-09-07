@@ -138,6 +138,7 @@ impl Lexer {
                     if let Some(peek_char) = self.get_next_char() {
                         if peek_char == '=' {
                             self.advance();
+                            self.advance();
                             return Some(Token::Eq);
                         }
                     }
@@ -189,6 +190,7 @@ impl Lexer {
                     if let Some(peek_char) = self.get_next_char() {
                         if peek_char == '=' {
                             self.advance();
+                            self.advance();
                             return Some(Token::GtEq);
                         }
                     }
@@ -199,6 +201,7 @@ impl Lexer {
                     if let Some(peek_char) = self.get_next_char() {
                         if peek_char == '=' {
                             self.advance();
+                            self.advance();
                             return Some(Token::LtEq);
                         }
                     }
@@ -208,6 +211,7 @@ impl Lexer {
                 '!' => {
                     if let Some(peek_char) = self.get_next_char() {
                         if peek_char == '=' {
+                            self.advance();
                             self.advance();
                             return Some(Token::NotEq);
                         }
