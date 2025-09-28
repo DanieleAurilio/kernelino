@@ -31,13 +31,7 @@ impl Parser {
                     Token::Identifier(identifier) => self.evaluate_identifier(identifier),
                     Token::Nil => self.evaluate_unary(),
                     Token::Print => self.evaluate_print(None),
-                    Token::If => {
-                        if let Some(if_stmt) = self.evaluate_if() {
-                            if_stmt
-                        } else {
-                            panic!("Panicking in if statment")
-                        }
-                    }
+                    Token::If => self.evaluate_if(),
                     Token::Assign => self.evaluate_assign(),
                     Token::For => todo!(),
                     Token::Do => todo!(),
@@ -58,7 +52,7 @@ impl Parser {
                     Token::RBrace => todo!(),
                     Token::Gt => todo!(),
                     Token::Eq => todo!(),
-                    Token::Lt => todo!(),
+                    Token::Lt => Stmt::BinaryOperatorsStmt(BinaryOperators::Lt),
                     Token::Not => todo!(),
                     Token::NotEq => todo!(),
                     Token::GtEq => todo!(),
@@ -122,33 +116,18 @@ impl Parser {
         }
     }
 
-    fn evaluate_if(&mut self) -> Option<Stmt> {
+    fn evaluate_if(&mut self) -> Stmt {
         self.advance();
-
-        let condition = self.evaluate_condition();
-        let then_block = self.evaluate_then();
-        let else_block = self.evaluate_else();
-        let end = self.evaluate_end();
-        Some(Stmt::If {
-            condition: condition,
-            then_block: then_block,
-            else_block: else_block,
-            end: end,
-        })
+        Stmt::If {
+            condition: self.evaluate_condition(),
+            then_block: Some(Box::new(self.evaluate_then())),
+            else_block: Some(Box::new(self.evaluate_else())),
+            end: self.evaluate_end(),
+        }
     }
 
     fn evaluate_end(&mut self) -> Expr {
-        self.advance();
-
-        let token = match self.get_token() {
-            Some(token) => token,
-            None => panic!("Not found any end"),
-        };
-
-        match token {
-            Token::End => return Expr::End,
-            _ => panic!("Missing end")
-        }
+        return Expr::End;
     }
 
     fn evaluate_condition(&mut self) -> Expr {
@@ -176,55 +155,31 @@ impl Parser {
         }
     }
 
-    fn evaluate_then(&mut self) -> Box<Stmt> {
+    fn evaluate_then(&mut self) -> Stmt {
         self.advance();
-
-        if let Some(token) = self.get_token() {
-            match token {
-                Token::Then => {}
-                _ => panic!("Then clause not found"),
-            }
-        }
-
-        return Box::new(self.evaluate_stmt());
+        return self.evaluate_stmt();
     }
 
-    fn evaluate_else(&mut self) -> Option<Box<Stmt>> {
+    fn evaluate_else(&mut self) -> Stmt {
         self.advance();
-
-        if let Some(token) = self.get_token() {
-            match token {
-                Token::Else => {}
-                _ => return None,
-            }
-        }
-
-        let else_stmt = self.evaluate_stmt();
-
-        return Some(Box::new(else_stmt));
+        return self.evaluate_stmt();
     }
 
     fn evaluate_stmt(&mut self) -> Stmt {
         let mut stmt: Vec<Stmt> = Vec::new();
-        loop {
-            self.advance();
 
-            if let Some(token) = self.get_token() {
-                match token {
-                    Token::If => {
-                        if let Some(nested_if) = self.evaluate_if() {
-                            stmt.push(nested_if)
-                        }
-                    }
-                    _ => {
-                        if let Some(base_token) = self.evaluate_base_token() {
-                            stmt.push(Stmt::ExprStmt(base_token))
-                        } else {
-                            break;
-                        }
+        while let Some(token) = self.get_token() {
+            match token {
+                Token::If => stmt.push(self.evaluate_if()),
+                Token::Else | Token::End => break,
+                Token::Assign =>   stmt.push(self.evaluate_assign()),
+                _ => {
+                    if let Some(base_token) = self.evaluate_base_token() {
+                        stmt.push(Stmt::ExprStmt(base_token))
                     }
                 }
             }
+            self.advance();
         }
 
         return Stmt::Block(stmt);
