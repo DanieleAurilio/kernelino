@@ -8,11 +8,11 @@ pub struct Ast {
     body: Vec<Stmt>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Stmt {
     If {
         condition: Expr,
-        then_block: Box<Stmt>,
+        then_block: Option<Box<Stmt>>,
         else_block: Option<Box<Stmt>>,
         end: Expr,
     },
@@ -31,11 +31,12 @@ pub enum Stmt {
     },
     Block(Vec<Stmt>),
     ExprStmt(Expr),
+    BinaryOperatorsStmt(BinaryOperators),
     Return(Expr),
     Eof(),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     Identifier(String),
     Integer(i64),
@@ -54,7 +55,7 @@ pub enum Expr {
     End,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BinaryOperators {
     Add,
     Sub,
@@ -71,7 +72,7 @@ pub enum BinaryOperators {
     Or,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum UnaryOperators {
     Not,
     Nil,
