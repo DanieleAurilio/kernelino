@@ -1,4 +1,4 @@
-use crate::{lexer::Lexer, vfs::Vfs};
+use crate::{ast::Ast, lexer::Lexer, vfs::Vfs};
 
 pub struct Lua;
 
@@ -31,7 +31,9 @@ impl Lua {
         match Vfs::read_file_content_bytes_to_utf8(vfs, file_clone) {
             Some(content) => {
                let mut lexer =  Lexer::new(content);
-               lexer.read_input();
+               let tokens = lexer.read_input();
+               let mut ast = Ast::new();
+               ast.build(tokens);
             },
             None => {
                 return;

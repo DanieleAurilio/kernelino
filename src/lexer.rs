@@ -46,6 +46,8 @@ pub enum Token {
     GtEq,
     LtEq,
 
+    Return,
+
     Eof,
 }
 
@@ -94,7 +96,6 @@ impl Lexer {
         }
 
         tokens.push(Token::Eof);
-        println!("{:?}", tokens);
         return tokens;
     }
 
@@ -306,6 +307,7 @@ impl Lexer {
             "break" => return Some(Token::Break),
             "nil" => return Some(Token::Nil),
             "function" => return Some(Token::Function),
+            "return" => return Some(Token::Return),
             _ => return Some(Token::Identifier(keyword)),
         }
     }
