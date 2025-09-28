@@ -7,6 +7,8 @@ mod vmm;
 mod vpm;
 mod lua;
 mod lexer;
+mod ast;
+mod parser;
 
 #[tokio::main]
 async fn main() {
