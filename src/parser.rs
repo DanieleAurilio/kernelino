@@ -33,7 +33,8 @@ impl Parser {
                     Token::Print => self.evaluate_print(None),
                     Token::If => self.evaluate_if(),
                     Token::Assign => self.evaluate_assign(),
-                    Token::For => todo!(),
+                    Token::End => Stmt::ExprStmt(self.evaluate_end()),
+                    Token::For => self.evaluate_for(),
                     Token::Do => todo!(),
                     Token::While => todo!(),
                     Token::Repeat => todo!(),
@@ -65,6 +66,7 @@ impl Parser {
                 stmts.push(stmt);
                 self.advance();
             } else {
+                println!("stmt {:?}", stmts);
                 break;
             }
         }
@@ -160,9 +162,15 @@ impl Parser {
         return self.evaluate_stmt();
     }
 
-    fn evaluate_else(&mut self) -> Stmt {
-        self.advance();
-        return self.evaluate_stmt();
+    fn evaluate_else(&mut self) -> Option<Stmt> {
+        let else_token = self.get_token();
+        match else_token {
+            Some(Token::Else) => {
+                self.advance();
+                Some(self.evaluate_stmt())
+            },
+            _ => None
+        }
     }
 
     fn evaluate_stmt(&mut self) -> Stmt {
@@ -172,7 +180,9 @@ impl Parser {
             match token {
                 Token::If => stmt.push(self.evaluate_if()),
                 Token::Else | Token::End => break,
-                Token::Assign =>   stmt.push(self.evaluate_assign()),
+                Token::Assign => stmt.push(self.evaluate_assign()),
+                Token::For => stmt.push(self.evaluate_for()),
+                Token::Break => stmt.push(self.evaluate_break()),
                 _ => {
                     if let Some(base_token) = self.evaluate_base_token() {
                         stmt.push(Stmt::ExprStmt(base_token))
@@ -193,6 +203,30 @@ impl Parser {
                 Token::Integer(int) => Some(Expr::Integer(int)),
                 Token::Float(float) => Some(Expr::Float(float)),
                 Token::Boolean(bool) => Some(Expr::Boolean(bool)),
+                Token::Increment => Some(Expr::Unary {
+                    op: UnaryOperators::Increment,
+                    expr: {
+                        self.advance();
+                        let incr_token = self.evaluate_base_token();
+                        if let Some(incr_value) = incr_token {
+                            Some(Box::new(incr_value))
+                        } else {
+                            Some(Box::new(Expr::Integer(1)))
+                        }
+                    },
+                }),
+                Token::Decrement => Some(Expr::Unary {
+                    op: UnaryOperators::Decrement,
+                    expr: {
+                        self.advance();
+                        let decr_token = self.evaluate_base_token();
+                        if let Some(decr_value) = decr_token {
+                            Some(Box::new(decr_value))
+                        } else {
+                            Some(Box::new(Expr::Integer(1)))
+                        }
+                    },
+                }),
                 _ => None,
             }
         } else {
@@ -228,6 +262,9 @@ impl Parser {
             Some(val) => Stmt::Assign { value: val },
             None => panic!("Not found any assigned value"),
         }
+    }
+    fn evaluate_break(&mut self) -> Stmt {
+        Stmt::ExprStmt(Expr::Break)
     }
 
     fn evaluate_local(&mut self) -> Stmt {
@@ -268,6 +305,63 @@ impl Parser {
         })
     }
 
+    fn evaluate_for(&mut self) -> Stmt {
+        self.advance();
+        let identifier_token = self.get_token();
+
+        let var = match identifier_token {
+            Some(Token::Identifier(identifier)) => Expr::Identifier(identifier),
+            _ => panic!("Expect Identifier in for"),
+        };
+
+        self.advance();
+
+        let assign_token = self.get_token();
+        let assign = match assign_token {
+            Some(Token::Assign) => {
+                self.advance();
+                match self.evaluate_base_token() {
+                    Some(expr) => Stmt::Assign { value: expr },
+                    _ => panic!("Assign a initial value to for"),
+                }
+            }
+            _ => panic!("Not found any assign"),
+        };
+
+        self.expect(Token::Comma);
+
+        let end = self.evaluate_condition();
+
+        self.expect(Token::Comma);
+
+        self.advance(); // skip the Identifier
+        let step = self.evaluate_base_token();
+
+        self.expect(Token::Do);
+
+        let body = self.evaluate_stmt();
+
+        Stmt::ForNumeric {
+            var,
+            start: Box::new(assign),
+            end: end,
+            step: step,
+            body: Box::new(body),
+        }
+    }
+
+    fn expect(&mut self, expect_token: Token) {
+        self.advance();
+        if let Some(token) = self.get_token() {
+            if token == expect_token {
+                self.advance();
+            } else {
+                panic!("No expected token found: {:?}", expect_token)
+            }
+        } else {
+            panic!("No token found as expected");
+        }
+    }
     fn advance(&mut self) {
         self.pos += 1;
     }
