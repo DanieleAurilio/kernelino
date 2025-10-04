@@ -13,7 +13,7 @@ pub enum Stmt {
     If {
         condition: Expr,
         then_block: Option<Box<Stmt>>,
-        else_block: Option<Box<Stmt>>,
+        else_block: Option<Box<Option<Stmt>>>,
         end: Expr,
     },
     While {
@@ -28,6 +28,13 @@ pub enum Stmt {
     },
     Print {
         value: Expr,
+    },
+    ForNumeric {
+        var: Expr,
+        start: Box<Stmt>,
+        end: Expr,
+        step: Option<Expr>,
+        body: Box<Stmt>
     },
     Block(Vec<Stmt>),
     ExprStmt(Expr),
@@ -52,6 +59,7 @@ pub enum Expr {
         op: UnaryOperators,
         expr: Option<Box<Expr>>,
     },
+    Break,
     End,
 }
 
@@ -76,6 +84,8 @@ pub enum BinaryOperators {
 pub enum UnaryOperators {
     Not,
     Nil,
+    Increment,
+    Decrement
 }
 
 impl Ast {

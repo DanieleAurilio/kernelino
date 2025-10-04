@@ -40,6 +40,9 @@ pub enum Token {
     Gt,
     Eq,
     Lt,
+    Comma,
+    Increment,
+    Decrement,
 
     Not,
     NotEq,
@@ -152,10 +155,23 @@ impl Lexer {
                     return Some(Token::DoubleQuote);
                 }
                 '+' => {
+                    if let Some(peek_char) = self.get_next_char() {
+                        if peek_char.eq(&'+') || peek_char.eq(&'=') {
+                            self.advance();
+                            return Some(Token::Increment);
+                        }
+                    }
+
                     self.advance();
                     return Some(Token::Plus);
                 }
                 '-' => {
+                    if let Some(peek_char) = self.get_next_char() {
+                        if peek_char.eq(&'-') || peek_char.eq(&'=') {
+                            self.advance();
+                            return Some(Token::Decrement);
+                        }
+                    }
                     self.advance();
                     return Some(Token::Minus);
                 }
@@ -219,6 +235,10 @@ impl Lexer {
                     }
                     self.advance();
                     return Some(Token::Not);
+                }
+                ',' => {
+                    self.advance();
+                    return Some(Token::Comma);
                 }
                 _ => {}
             }
