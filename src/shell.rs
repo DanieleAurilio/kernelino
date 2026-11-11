@@ -343,4 +343,90 @@ mod tests {
         let out = run("mkdir d\nwrite d/x.lua\nprint('ok')\nwq\ncd /tmp\nlua ../d/x.lua\n");
         assert!(out.contains("ok\n"));
     }
+
+    #[test]
+    fn parse_reports_usage_for_wrong_arguments() {
+        assert_eq!(Command::parse("ls a b"), Err("usage: ls [path]".into()));
+        assert_eq!(Command::parse("exit now"), Err("usage: exit".into()));
+        assert_eq!(Command::parse("cd a b"), Err("usage: cd [path]".into()));
+        assert_eq!(Command::parse("write"), Err("usage: write <path>".into()));
+        assert_eq!(Command::parse("lua"), Err("usage: lua <path>".into()));
+    }
+
+    #[test]
+    fn parse_covers_every_command() {
+        let path = || String::from("p");
+        let expected = [
+            Command::Exit,
+            Command::Help,
+            Command::Clear,
+            Command::Pwd,
+            Command::Cd(path()),
+            Command::Ls(path()),
+            Command::MkDir(path()),
+            Command::Touch(path()),
+            Command::Write(path()),
+            Command::Read(path()),
+            Command::Rm(path()),
+            Command::Top,
+            Command::Lua(path()),
+        ];
+        assert_eq!(HELP.len(), expected.len());
+        for ((usage, _), command) in HELP.iter().zip(expected) {
+            let line = usage.replace("<path>", "p").replace("[path]", "p");
+            assert_eq!(Command::parse(&line), Ok(Some(command)), "{usage}");
+        }
+    }
+
+    #[test]
+    fn help_lists_every_command() {
+        let out = run("help\n");
+        for (usage, _) in HELP {
+            assert!(out.contains(usage), "{usage}");
+        }
+    }
+
+    #[test]
+    fn ls_prints_directories_and_file_sizes() {
+        let out = run("mkdir d\nwrite f\nhi\nwq\nls\n");
+        assert!(out.contains("d/\n"));
+        assert!(out.contains("f 3\n"));
+    }
+
+    #[test]
+    fn editor_quit_does_not_create_the_file() {
+        let out = run("write f\nabc\nq\nls\n");
+        assert!(out.contains("bin/\n"));
+        assert!(!out.contains("\nf "));
+    }
+
+    #[test]
+    fn exit_stops_before_the_next_commands() {
+        let out = run("exit\npwd\n");
+        let (_, after) = out.split_once("Goodbye!").unwrap();
+        assert!(!after.contains("/\n"));
+    }
+
+    #[test]
+    fn clear_writes_the_clear_sequence() {
+        assert!(run("clear\n").contains("\x1b[2J"));
+    }
+
+    #[test]
+    fn rm_of_the_working_directory_is_refused() {
+        let out = run("mkdir a\ncd a\nrm /a\n");
+        assert!(out.contains("rm: /a: is the current directory or one of its parents"));
+    }
+
+    #[test]
+    fn lua_on_a_missing_file_fails() {
+        let out = run("lua nope.lua\n");
+        assert!(out.contains("lua: /nope.lua: no such file or directory"));
+    }
+
+    #[test]
+    fn lua_syntax_errors_are_reported() {
+        let out = run("write bad.lua\nx = = 1\nwq\nlua bad.lua\n");
+        assert!(out.contains("lua: /bad.lua:1:"));
+    }
 }

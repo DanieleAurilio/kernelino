@@ -39,3 +39,26 @@ impl Vpm {
         &self.processes
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn starts_with_the_shell_process() {
+        let vpm = Vpm::new();
+        let processes = vpm.processes();
+        assert_eq!(processes.len(), 1);
+        assert_eq!(processes[0].pid, 1);
+        assert_eq!(processes[0].name, "shell");
+    }
+
+    #[test]
+    fn uptime_never_decreases() {
+        let vpm = Vpm::new();
+        let process = &vpm.processes()[0];
+        let first = process.uptime();
+        let second = process.uptime();
+        assert!(second >= first);
+    }
+}
