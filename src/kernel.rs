@@ -152,4 +152,51 @@ mod tests {
         kernel.remove("d").unwrap();
         assert_eq!(kernel.vmm.free_memory(), PAGE_SIZE * 16);
     }
+
+    #[test]
+    fn errors_display_their_cause() {
+        let vfs_error = || VfsError::NotFound("/a".into());
+        assert_eq!(
+            KernelError::Vfs(vfs_error()).to_string(),
+            vfs_error().to_string()
+        );
+        assert_eq!(
+            KernelError::Vmm(VmmError::InvalidAddress(7)).to_string(),
+            VmmError::InvalidAddress(7).to_string()
+        );
+    }
+
+    #[test]
+    fn writing_a_directory_fails() {
+        let mut kernel = kernel();
+        kernel.vfs.create_dir_all("d").unwrap();
+        assert_eq!(
+            kernel.write_file("d", b"x"),
+            Err(KernelError::Vfs(VfsError::IsADirectory("/d".into())))
+        );
+    }
+
+    #[test]
+    fn writing_into_a_missing_directory_fails() {
+        let mut kernel = kernel();
+        let free = kernel.vmm.free_memory();
+        assert_eq!(
+            kernel.write_file("x/f", b"x"),
+            Err(KernelError::Vfs(VfsError::NotFound("/x".into())))
+        );
+        assert_eq!(kernel.vmm.free_memory(), free);
+    }
+
+    #[test]
+    fn reading_or_removing_a_missing_file_fails() {
+        let mut kernel = kernel();
+        assert!(matches!(
+            kernel.read_file("nope"),
+            Err(KernelError::Vfs(VfsError::NotFound(_)))
+        ));
+        assert!(matches!(
+            kernel.remove("nope"),
+            Err(KernelError::Vfs(VfsError::NotFound(_)))
+        ));
+    }
 }
