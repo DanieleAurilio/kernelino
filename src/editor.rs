@@ -1,68 +1,59 @@
-use std::io;
 /**
  * Minimal file editor
  * "wq" -> save and quit
  * "q" -> quit
  */
-use std::io::Write;
-use std::sync::{Arc, Mutex};
+use std::io::{self, BufRead, Write};
 
-use crate::vfs::File;
-use crate::vmm::Vmm;
+/// Returns the typed content on "wq", `None` on "q" or end of input.
+pub fn edit(input: &mut impl BufRead, out: &mut impl Write) -> io::Result<Option<String>> {
+    writeln!(
+        out,
+        "Welcome to the editor! Type 'wq' to save and quit or 'q' to quit without saving."
+    )?;
 
-#[warn(dead_code)]
-pub struct Editor {}
+    let mut content = String::new();
+    loop {
+        write!(out, "> ")?;
+        out.flush()?;
 
-impl Editor {
-    pub fn write(file_mux: Arc<Mutex<File>>, vmm: Arc<Mutex<Vmm>>) {
-        let mut vmm_mutex = vmm.lock().unwrap();
-        let mut file = file_mux.lock().unwrap();
-        let mut new_content = Vec::<u8>::new();
-        let mut buffer = String::new();
-        print!(
-            "Welcome to the editor! Type 'wq' to save and quit or 'q' to quit without saving.\n"
-        );
-        loop {
-            print!("> ");
-            io::stdout().flush().unwrap();
+        let mut line = String::new();
+        if input.read_line(&mut line)? == 0 {
+            writeln!(out, "Exit without save")?;
+            return Ok(None);
+        }
 
-            let mut input = String::new();
-            io::stdin().read_line(&mut input).unwrap();
-
-            match input.trim() {
-                "wq" => {
-                    new_content = buffer.as_bytes().to_vec().clone();
-                    file.size = new_content.len() as u64;
-                    file.vmm_address = vmm_mutex.allocate_bytes(new_content);
-                    println!("File saved successfully!");
-                    return;
-                }
-                "q" => {
-                    println!("Exit without save");
-                    return;
-                }
-                _ => {
-                    buffer.push_str(&input);
-                    new_content.extend_from_slice(input.as_bytes());
-                    new_content.push(b'\n');
-                }
+        match line.trim() {
+            "wq" => return Ok(Some(content)),
+            "q" => {
+                writeln!(out, "Exit without save")?;
+                return Ok(None);
             }
+            _ => content.push_str(&line),
         }
     }
+}
 
-    pub fn read(file_mux: Arc<Mutex<File>>, vmm: Arc<Mutex<Vmm>>) {
-        let file = file_mux.lock().unwrap();
-        let vmm_mutex = vmm.lock().unwrap();
-        let content = vmm_mutex.get_bytes(file.vmm_address.clone(), file.size);
-        if content.is_empty() {
-            return;
-        }
-        let content = String::from_utf8(content).unwrap();
-        content
-            .lines()
-            .filter(|line| !line.is_empty())
-            .for_each(|line| {
-                println!("{}", line);
-            });
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn run(input: &str) -> Option<String> {
+        edit(&mut input.as_bytes(), &mut Vec::new()).unwrap()
+    }
+
+    #[test]
+    fn wq_saves_typed_lines() {
+        assert_eq!(run("a\n\nb\nwq\n").as_deref(), Some("a\n\nb\n"));
+    }
+
+    #[test]
+    fn q_discards() {
+        assert_eq!(run("a\nq\n"), None);
+    }
+
+    #[test]
+    fn end_of_input_discards_instead_of_looping() {
+        assert_eq!(run("a\n"), None);
     }
 }
