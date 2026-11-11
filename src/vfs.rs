@@ -1,361 +1,319 @@
-use crate::editor::Editor;
-use crate::utils;
-use crate::vmm::Vmm;
-use crate::vpm::Vpm;
-use std::sync::{Arc, Mutex};
-use std::{collections::HashMap, path::PathBuf};
+/**
+ * Virtual File System
+ *
+ * An in-memory tree of directories and files, navigated by path.
+ * File contents live in the VMM: a file only knows the virtual pages
+ * that hold its bytes.
+ */
+use std::collections::BTreeMap;
+use std::fmt;
+use std::path::{Component, Path, PathBuf};
 
 const SEPARATOR: &str = "/";
 
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
+#[derive(Debug, Default)]
 pub struct File {
-    name: String,
-    path: PathBuf,
-    pub vmm_address: Vec<u64>,
     pub size: u64,
+    pub pages: Vec<u64>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default)]
 pub struct Directory {
-    name: String,
-    parent: Option<Box<Directory>>,
-    files: HashMap<String, Arc<Mutex<File>>>,
-    subdirectories: HashMap<String, Directory>,
-    path: PathBuf,
+    entries: BTreeMap<String, Node>,
 }
 
-impl Directory {
-    pub fn new(name: &str, path: PathBuf, parent: Option<Box<Directory>>) -> Self {
-        Self {
-            name: String::from(name),
-            parent,
-            files: HashMap::new(),
-            subdirectories: HashMap::new(),
-            path,
+#[derive(Debug)]
+pub enum Node {
+    File(File),
+    Directory(Directory),
+}
+
+impl Node {
+    /// Every page used by this node, including the ones of nested files.
+    pub fn pages(&self) -> Vec<u64> {
+        match self {
+            Self::File(file) => file.pages.clone(),
+            Self::Directory(dir) => dir.entries.values().flat_map(Node::pages).collect(),
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Eq)]
+pub enum VfsError {
+    NotFound(PathBuf),
+    AlreadyExists(PathBuf),
+    NotADirectory(PathBuf),
+    IsADirectory(PathBuf),
+    InUse(PathBuf),
+}
+
+impl fmt::Display for VfsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NotFound(path) => write!(f, "{}: no such file or directory", path.display()),
+            Self::AlreadyExists(path) => write!(f, "{}: already exists", path.display()),
+            Self::NotADirectory(path) => write!(f, "{}: not a directory", path.display()),
+            Self::IsADirectory(path) => write!(f, "{}: is a directory", path.display()),
+            Self::InUse(path) => write!(
+                f,
+                "{}: is the current directory or one of its parents",
+                path.display()
+            ),
+        }
+    }
+}
+
+impl std::error::Error for VfsError {}
+
+#[derive(Debug)]
 pub struct Vfs {
-    pub root: Directory,
-    pub cwd: PathBuf,
-    pub vpm: Vpm,
+    root: Directory,
+    cwd: PathBuf,
 }
 
 impl Vfs {
-    pub fn new(vpm: Vpm) -> Self {
-        let root_path = PathBuf::from(SEPARATOR);
-        let root = Directory::new("/", PathBuf::from("/"), None);
+    pub fn new() -> Self {
         Self {
-            root,
-            cwd: root_path,
-            vpm,
+            root: Directory::default(),
+            cwd: PathBuf::from(SEPARATOR),
         }
     }
 
-    pub fn list(&mut self) {
-        let current_dir = self.get_dir_in_vfs(
-            self.cwd
-                .clone()
-                .into_os_string()
-                .into_string()
-                .unwrap()
-                .as_str(),
-        );
-        if let Some(dir) = current_dir {
-            if dir.files.is_empty() {
-                println!("No files found");
-            } else {
-                for file in dir.files.values() {
-                    let file = file.as_ref().lock().unwrap();
-                    println!("{} {}", file.name, file.size);
-                }
-            }
-
-            if dir.subdirectories.is_empty() {
-                println!("No directories found");
-            } else {
-                for subdir in dir.subdirectories.values() {
-                    println!("{}/", subdir.name);
-                }
-            }
-        }
+    pub fn cwd(&self) -> &Path {
+        &self.cwd
     }
 
-    pub fn pwd(self) {
-        println!(
-            "{}",
-            self.cwd.clone().into_os_string().into_string().unwrap()
-        );
-    }
-
-    pub fn add_directory_recursive(&mut self, dirnames: &str) {
-        let mut current_path = self.cwd.clone();
-        let mut current_dir = match self.get_dir_in_vfs(current_path.to_str().unwrap()) {
-            Some(dir) => dir,
-            None => return,
+    /// Turns `path` into a normalized absolute path, relative to the cwd.
+    pub fn resolve(&self, path: &str) -> PathBuf {
+        let mut resolved = if path.starts_with(SEPARATOR) {
+            PathBuf::from(SEPARATOR)
+        } else {
+            self.cwd.clone()
         };
 
-        if utils::is_unix_symbol(dirnames) {
-            println!("Invalid directory name");
-            return;
-        }
-
-        if dirnames.split(SEPARATOR).count() > 1 {
-            let dirs = dirnames.split(SEPARATOR);
-            for dir in dirs {
-                if !current_dir.subdirectories.contains_key(dir) {
-                    current_dir.subdirectories.insert(
-                        String::from(dir),
-                        Directory::new(
-                            dir,
-                            current_path.join(dir),
-                            Some(Box::new(current_dir.clone())),
-                        ),
-                    );
-                } else {
-                    let curr = current_dir.subdirectories.get_mut(dir).unwrap();
-                    current_path = curr.path.clone();
-                    current_dir = curr;
+        for name in path.split(SEPARATOR) {
+            match name {
+                "" | "." => {}
+                ".." => {
+                    resolved.pop();
                 }
-            }
-        } else {
-            if !current_dir.subdirectories.contains_key(dirnames) {
-                current_dir.subdirectories.insert(
-                    String::from(dirnames),
-                    Directory::new(
-                        dirnames,
-                        current_path.join(dirnames),
-                        Some(Box::new(current_dir.clone())),
-                    ),
-                );
-            } else {
-                println!("Directory already exists");
+                name => resolved.push(name),
             }
         }
+        resolved
     }
 
-    pub fn change_dir(&mut self, dir: &str) {
-        if dir == "." {
-            return;
-        }
-
-        if dir == "/" {
-            self.cwd = PathBuf::from(SEPARATOR);
-            return;
-        }
-
-        if dir == ".." {
-            match self.cwd.parent() {
-                Some(parent) => {
-                    self.cwd = parent.to_path_buf();
-                    return;
-                }
-                None => return,
-            }
-        }
-
-        let dir_to = self.get_dir_in_vfs(self.cwd.join(dir).to_str().unwrap());
-        if let Some(dir) = dir_to {
-            self.cwd = dir.path.clone();
-        } else {
-            println!("Directory not found");
-        }
+    pub fn change_dir(&mut self, path: &str) -> Result<(), VfsError> {
+        let path = self.resolve(path);
+        self.dir(&path)?;
+        self.cwd = path;
+        Ok(())
     }
 
-    pub fn remove(&mut self, files_path: &str) {
-        let file = files_path.split(SEPARATOR).last();
-        if file.unwrap().contains(".") {
-            let dir_path = &files_path
-                .split(SEPARATOR)
-                .take(files_path.split(SEPARATOR).count() - 1)
-                .collect::<Vec<&str>>()
-                .join(SEPARATOR);
-            let current_dir = self.get_dir_in_vfs(self.cwd.join(dir_path).to_str().unwrap());
-            if let Some(dir) = current_dir {
-                if dir.files.contains_key(file.unwrap()) {
-                    let file_address_to_deallocate = dir
-                        .files
-                        .get(file.unwrap())
-                        .unwrap()
-                        .lock()
-                        .unwrap()
-                        .vmm_address
-                        .clone();
-                    dir.files.remove(file.unwrap());
-                    let mut vmm = self.vpm.vmm.lock().unwrap();
-                    vmm.deallocate_page(file_address_to_deallocate);
-                    drop(vmm);
-                } else {
-                    println!("File {} not found.", file.unwrap());
-                }
-            } else {
-                println!("Directory {} not found.", dir_path);
-            }
-        } else {
-            let dir_to_remove = self.get_dir_in_vfs(self.cwd.join(files_path).to_str().unwrap());
-            if let Some(dir) = dir_to_remove {
-                dir.parent
-                    .as_mut()
-                    .unwrap()
-                    .subdirectories
-                    .remove(&dir.name);
-            } else {
-                println!("Directory {} not found.", files_path)
-            }
-        }
-    }
+    /// Creates the directory and any missing parent, like `mkdir -p`.
+    pub fn create_dir_all(&mut self, path: &str) -> Result<(), VfsError> {
+        let path = self.resolve(path);
+        let mut created = false;
+        let mut dir = &mut self.root;
 
-    pub fn touch(&mut self, filename: &str) {
-        if filename.contains(SEPARATOR) {
-            println!("Please provide only filename with extension {}", filename);
-            return;
-        }
-
-        let mut vmm = self.vpm.vmm.lock().unwrap();
-        let (vmm_address, _) = vmm.allocate_page();
-        drop(vmm);
-
-        let cwd = self.cwd.clone();
-        let current_dir = self.get_dir_in_vfs(cwd.to_str().unwrap()).unwrap();
-        if !current_dir.files.contains_key(filename) {
-            let new_file = File {
-                vmm_address: vec![vmm_address],
-                name: filename.to_string(),
-                path: PathBuf::from(cwd.join(filename)),
-                size: 0,
-            };
-            current_dir
-                .files
-                .insert(filename.to_string(), Arc::new(Mutex::new(new_file)));
-        } else {
-            println!("File {} already exists.", filename)
-        }
-    }
-
-    /**
-     * Allow to write file content, if no bytes are provided, it will open the editor
-     */
-    pub fn write_file(
-        &mut self,
-        filename: &str,
-        bytes_to_write: Option<Vec<u8>>,
-        filepath: Option<&str>,
-    ) {
-        if let Some(file) = self.get_file_in_cwd(filename) {
-            let vmm_clone = Arc::clone(&self.vpm.vmm);
-            if bytes_to_write.is_none() {
-                self.vpm.execute(move |_| {
-                    Editor::write(file, vmm_clone);
-                });
-            } else {
-                self.write_file_bytes(vmm_clone, file, bytes_to_write.unwrap(), filepath);
-            }
-        }
-    }
-
-    fn write_file_bytes(
-        &mut self,
-        vmm: Arc<Mutex<Vmm>>,
-        file: Arc<Mutex<File>>,
-        bytes: Vec<u8>,
-        filepath: Option<&str>,
-    ) {
-        if filepath.is_none() {
-            println!("Please provide a file path");
-            return;
-        }
-
-        self.vpm.execute(move |_| {
-            let mut vmm = vmm.lock().unwrap();
-            let virtual_addresses = vmm.allocate_bytes(bytes.clone());
-            let mut file = file.lock().unwrap();
-            file.size = bytes.len() as u64;
-            file.vmm_address = virtual_addresses;
-            file.path = PathBuf::from(filepath.unwrap());
-        });
-    }
-
-    pub fn read_file(&mut self, filename: &str) {
-        if let Some(file) = self.get_file_in_cwd(filename) {
-            let vmm_clone = Arc::clone(&self.vpm.vmm);
-            self.vpm.execute(move |_| {
-                Editor::read(file, vmm_clone);
+        for name in names(&path) {
+            let node = dir.entries.entry(name.to_string()).or_insert_with(|| {
+                created = true;
+                Node::Directory(Directory::default())
             });
+            dir = match node {
+                Node::Directory(dir) => dir,
+                Node::File(_) => return Err(VfsError::NotADirectory(path.clone())),
+            };
         }
-    }
 
-    pub fn get_file_in_cwd(&mut self, filename: &str) -> Option<Arc<Mutex<File>>> {
-        let cwd = self.cwd.clone();
-        if let Some(current_dir) = self.get_dir_in_vfs(cwd.to_str().unwrap()) {
-            if current_dir.files.contains_key(filename) {
-                return Some(current_dir.files.get(filename).unwrap().clone());
-            } else {
-                println!("File {} not found.", filename);
-                return None;
-            }
+        if created {
+            Ok(())
         } else {
-            println!("Directory {} not found.", cwd.to_str().unwrap());
-            None
+            Err(VfsError::AlreadyExists(path))
         }
     }
 
-    fn get_dir_in_vfs(&mut self, path: &str) -> Option<&mut Directory> {
-        let mut current_dir = &mut self.root;
-        for dir in path.split(SEPARATOR) {
-            if dir.is_empty() {
-                continue;
-            }
-            if let Some(new_dir) = current_dir.subdirectories.get_mut(dir) {
-                current_dir = new_dir;
-            } else {
-                return None;
-            }
+    pub fn create_file(&mut self, path: &str) -> Result<(), VfsError> {
+        let path = self.resolve(path);
+        let (parent, name) = split(&path)?;
+        let dir = self.dir_mut(parent)?;
+
+        if dir.entries.contains_key(name) {
+            return Err(VfsError::AlreadyExists(path.clone()));
         }
-        Some(current_dir)
+        dir.entries
+            .insert(name.to_string(), Node::File(File::default()));
+        Ok(())
     }
 
-    pub fn search_file_recursive(
-        &self,
-        filepath: &str,
-        current_dir: &Directory,
-    ) -> Option<Arc<Mutex<File>>> {
-        if current_dir.files.contains_key(filepath) {
-           return Some(current_dir.files.get(filepath).unwrap().clone());
+    /// Detaches the node from the tree. The caller owns its pages.
+    pub fn remove(&mut self, path: &str) -> Result<Node, VfsError> {
+        let path = self.resolve(path);
+        if self.cwd.starts_with(&path) {
+            return Err(VfsError::InUse(path));
         }
 
-        if filepath.contains(SEPARATOR) {
-            let dirs = filepath.split(SEPARATOR);
-            for dir in dirs {
-                if current_dir.subdirectories.contains_key(dir) {
-                    self.search_file_recursive(
-                        filepath,
-                        current_dir.subdirectories.get(dir).unwrap(),
-                    );
-                }
-            }
-        }
-
-        return None;
+        let (parent, name) = split(&path)?;
+        self.dir_mut(parent)?
+            .entries
+            .remove(name)
+            .ok_or_else(|| VfsError::NotFound(path.clone()))
     }
 
-    pub fn read_file_content_bytes_to_utf8(&self, file: &File) -> Option<String> {
-        let vmm_mux = self.vpm.vmm.lock().unwrap();
-        let file_content_bytes = vmm_mux.get_bytes(file.vmm_address.clone(), 4096);
-        match String::from_utf8(file_content_bytes) {
-            Ok(content) => Some(content),
-            Err(_) => {
-                println!("Error reading file {}", file.name);
-                None
-            }
+    pub fn list(&self, path: &str) -> Result<impl Iterator<Item = (&str, &Node)>, VfsError> {
+        let dir = self.dir(&self.resolve(path))?;
+        Ok(dir.entries.iter().map(|(name, node)| (name.as_str(), node)))
+    }
+
+    pub fn file(&self, path: &str) -> Result<&File, VfsError> {
+        let path = self.resolve(path);
+        let (parent, name) = split(&path)?;
+        match self.dir(parent)?.entries.get(name) {
+            Some(Node::File(file)) => Ok(file),
+            Some(Node::Directory(_)) => Err(VfsError::IsADirectory(path.clone())),
+            None => Err(VfsError::NotFound(path.clone())),
         }
+    }
+
+    pub fn file_mut(&mut self, path: &str) -> Result<&mut File, VfsError> {
+        let path = self.resolve(path);
+        let (parent, name) = split(&path)?;
+        match self.dir_mut(parent)?.entries.get_mut(name) {
+            Some(Node::File(file)) => Ok(file),
+            Some(Node::Directory(_)) => Err(VfsError::IsADirectory(path.clone())),
+            None => Err(VfsError::NotFound(path.clone())),
+        }
+    }
+
+    fn dir(&self, path: &Path) -> Result<&Directory, VfsError> {
+        let mut dir = &self.root;
+        for name in names(path) {
+            dir = match dir.entries.get(name) {
+                Some(Node::Directory(dir)) => dir,
+                Some(Node::File(_)) => return Err(VfsError::NotADirectory(path.to_path_buf())),
+                None => return Err(VfsError::NotFound(path.to_path_buf())),
+            };
+        }
+        Ok(dir)
+    }
+
+    fn dir_mut(&mut self, path: &Path) -> Result<&mut Directory, VfsError> {
+        let mut dir = &mut self.root;
+        for name in names(path) {
+            dir = match dir.entries.get_mut(name) {
+                Some(Node::Directory(dir)) => dir,
+                Some(Node::File(_)) => return Err(VfsError::NotADirectory(path.to_path_buf())),
+                None => return Err(VfsError::NotFound(path.to_path_buf())),
+            };
+        }
+        Ok(dir)
     }
 }
 
-pub fn init_vfs() -> Vfs {
-    Vfs::new(Vpm::new(Arc::new(Mutex::new(Vmm::new(
-        1024 * 1024 * 1024 * 4,
-    )))))
+fn names(path: &Path) -> impl Iterator<Item = &str> {
+    path.components().filter_map(|component| match component {
+        Component::Normal(name) => name.to_str(),
+        _ => None,
+    })
+}
+
+/// Splits an absolute path into its parent directory and its last name.
+fn split(path: &Path) -> Result<(&Path, &str), VfsError> {
+    match (
+        path.parent(),
+        path.file_name().and_then(|name| name.to_str()),
+    ) {
+        (Some(parent), Some(name)) => Ok((parent, name)),
+        _ => Err(VfsError::IsADirectory(path.to_path_buf())),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn names_in(vfs: &Vfs, path: &str) -> Vec<String> {
+        vfs.list(path)
+            .unwrap()
+            .map(|(name, _)| name.to_string())
+            .collect()
+    }
+
+    #[test]
+    fn resolve_normalizes_paths() {
+        let mut vfs = Vfs::new();
+        vfs.create_dir_all("a/b").unwrap();
+        vfs.change_dir("a/b").unwrap();
+        assert_eq!(vfs.resolve("../c/./d"), PathBuf::from("/a/c/d"));
+        assert_eq!(vfs.resolve("/x"), PathBuf::from("/x"));
+        assert_eq!(vfs.resolve("../../../.."), PathBuf::from("/"));
+    }
+
+    #[test]
+    fn mkdir_nested_creates_hierarchy() {
+        let mut vfs = Vfs::new();
+        vfs.create_dir_all("a/b/c").unwrap();
+        assert_eq!(names_in(&vfs, "/"), ["a"]);
+        assert_eq!(names_in(&vfs, "/a"), ["b"]);
+        assert_eq!(names_in(&vfs, "/a/b"), ["c"]);
+        assert_eq!(
+            vfs.create_dir_all("a/b"),
+            Err(VfsError::AlreadyExists(PathBuf::from("/a/b")))
+        );
+    }
+
+    #[test]
+    fn remove_directory_detaches_it() {
+        let mut vfs = Vfs::new();
+        vfs.create_dir_all("foo").unwrap();
+        vfs.remove("foo").unwrap();
+        assert!(names_in(&vfs, "/").is_empty());
+    }
+
+    #[test]
+    fn names_with_dots_keep_their_kind() {
+        let mut vfs = Vfs::new();
+        vfs.create_dir_all("my.dir").unwrap();
+        vfs.create_file(".env").unwrap();
+        assert!(matches!(vfs.remove("my.dir"), Ok(Node::Directory(_))));
+        assert!(matches!(vfs.remove(".env"), Ok(Node::File(_))));
+    }
+
+    #[test]
+    fn cannot_remove_cwd_or_its_parents() {
+        let mut vfs = Vfs::new();
+        vfs.create_dir_all("a/b").unwrap();
+        vfs.change_dir("a/b").unwrap();
+        assert!(matches!(vfs.remove("/a"), Err(VfsError::InUse(_))));
+        assert!(matches!(vfs.remove("/"), Err(VfsError::InUse(_))));
+    }
+
+    #[test]
+    fn files_are_not_directories() {
+        let mut vfs = Vfs::new();
+        vfs.create_file("f.txt").unwrap();
+        assert!(matches!(
+            vfs.change_dir("f.txt"),
+            Err(VfsError::NotADirectory(_))
+        ));
+        assert!(matches!(
+            vfs.create_file("f.txt"),
+            Err(VfsError::AlreadyExists(_))
+        ));
+        assert!(matches!(
+            vfs.create_file("f.txt/x"),
+            Err(VfsError::NotADirectory(_))
+        ));
+    }
+
+    #[test]
+    fn files_are_found_by_relative_and_absolute_path() {
+        let mut vfs = Vfs::new();
+        vfs.create_dir_all("d").unwrap();
+        vfs.create_file("d/x.lua").unwrap();
+        assert!(vfs.file("/d/x.lua").is_ok());
+        assert!(vfs.file("d/x.lua").is_ok());
+        assert!(matches!(vfs.file("d"), Err(VfsError::IsADirectory(_))));
+    }
 }
