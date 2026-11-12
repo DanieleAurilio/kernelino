@@ -12,7 +12,13 @@ See `adr/`.
 
 ## Domain model
 
-See `ddd/`.
+- [Glossary](ddd/glossary.md) — the terms of the domain, their context and their meaning
+- [Context map](ddd/context-map.md) — how the bounded contexts relate in the code today
+- [Shell](ddd/shell.md) — commands, the command line grammar, the editor, error output
+- [Kernel](ddd/kernel.md) — ownership of the subsystems, file operations that keep tree and bytes consistent
+- [File system](ddd/filesystem.md) — nodes, the working directory, path resolution
+- [Memory](ddd/memory.md) — pages, frames, the page table, allocation
+- [Processes](ddd/processes.md) — the process table, sandboxed Lua processes, time slices and kills
 
 ## Knowledge graph
 
