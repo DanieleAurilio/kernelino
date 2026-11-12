@@ -211,4 +211,32 @@ mod tests {
         assert_eq!(vmm.allocate_bytes(&data), Err(VmmError::OutOfMemory));
         assert_eq!(vmm.free_memory(), PAGE_SIZE);
     }
+
+    #[test]
+    fn errors_display() {
+        assert_eq!(VmmError::OutOfMemory.to_string(), "out of memory");
+        assert_eq!(
+            VmmError::InvalidAddress(7).to_string(),
+            "invalid virtual address 7"
+        );
+    }
+
+    #[test]
+    fn reading_an_invalid_address_fails() {
+        let vmm = Vmm::new(PAGE_SIZE);
+        assert_eq!(vmm.read_bytes(&[42], 1), Err(VmmError::InvalidAddress(42)));
+    }
+
+    #[test]
+    fn total_memory_is_rounded_down_to_pages() {
+        assert_eq!(Vmm::new(PAGE_SIZE * 2 + 1).total_memory(), PAGE_SIZE * 2);
+    }
+
+    #[test]
+    fn free_memory_decreases_with_allocations() {
+        let mut vmm = Vmm::new(PAGE_SIZE * 4);
+        vmm.allocate_page().unwrap();
+        vmm.allocate_page().unwrap();
+        assert_eq!(vmm.free_memory(), PAGE_SIZE * 2);
+    }
 }
