@@ -17,6 +17,7 @@ A sandbox OS shell written in Rust. People use it from the CLI to run **real Lua
 - mlua 0.12 with vendored Lua 5.4 (C, compiled by the build)
 
 ## Key architectural decisions
+
 - Ownership: `Shell` → `Kernel` → { `Vfs`, `Vmm`, `Vpm` }. No global state.
 - VFS has no parent pointers: everything is resolved from absolute paths (`Vfs::resolve`).
 - File contents live in the VMM; a `File` only stores its pages and size. `Kernel` keeps them consistent (frees pages on rewrite/remove).
@@ -29,6 +30,7 @@ A sandbox OS shell written in Rust. People use it from the CLI to run **real Lua
   - memory limit per state; a **global** instruction hook (inherited by script coroutines) yields every `TIME_SLICE` instructions and kills on CPU limit or when the script runs `STUCK_LIMIT` past its slice in a non-yieldable section (e.g. `table.sort` comparator);
   - `sandbox.lua` wraps `coroutine.resume/yield/wrap` so a preemption inside a script coroutine is passed up to the scheduler and stays invisible to the script, and wraps `pcall/xpcall/coroutine.resume` so a kill cannot be caught.
 - Shell `lua <path>` runs a process in the foreground, slice by slice (64 MB, 1e9 instructions ≈ 2 s in release).
+
 
 ## Roadmap
 - M0 ✅ hygiene: tests, CI, unused deps removed, no panic/hang reachable from the shell, help aligned
