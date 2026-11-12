@@ -1,0 +1,15 @@
+kernelino> Available commands:
+  exit           Exit the shell
+  help           Display this help message
+  clear          Clear the screen
+  pwd            Print the current working directory
+  cd [path]      Change the current working directory
+  ls [path]      List directory contents
+  mkdir <path>   Create a directory and its missing parents
+  touch <path>   Create an empty file
+  write <path>   Write a file with the editor, creating it if needed
+  read <path>    Print file content
+  rm <path>      Remove a file, or a directory with its content
+  top            Show the processes
+  lua <path>     Run a Lua 5.4 script in the sandbox
+kernelino> 

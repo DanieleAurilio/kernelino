@@ -1,0 +1,10 @@
+kernelino> Unknown command: frobnicate
+kernelino> usage: rm <path>
+kernelino> usage: ls [path]
+kernelino> kernelino> cd: /file.txt: not a directory
+kernelino> kernelino> read: /dir: is a directory
+kernelino> mkdir: /dir: already exists
+kernelino> touch: /file.txt: already exists
+kernelino> kernelino> kernelino> rm: /p: is the current directory or one of its parents
+kernelino> /p/q
+kernelino> 
