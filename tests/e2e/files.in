@@ -1,0 +1,13 @@
+write notes.txt
+first line
+second line
+wq
+read notes.txt
+ls
+write notes.txt
+only line
+wq
+read notes.txt
+ls
+rm notes.txt
+read notes.txt

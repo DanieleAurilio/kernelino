@@ -1,0 +1,17 @@
+kernelino> Welcome to the editor! Type 'wq' to save and quit or 'q' to quit without saving.
+> > > File saved successfully!
+kernelino> first line
+second line
+kernelino> .env 0
+bin/
+notes.txt 23
+tmp/
+kernelino> Welcome to the editor! Type 'wq' to save and quit or 'q' to quit without saving.
+> > File saved successfully!
+kernelino> only line
+kernelino> .env 0
+bin/
+notes.txt 10
+tmp/
+kernelino> kernelino> read: /notes.txt: no such file or directory
+kernelino> 

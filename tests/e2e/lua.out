@@ -1,0 +1,17 @@
+kernelino> Welcome to the editor! Type 'wq' to save and quit or 'q' to quit without saving.
+> > File saved successfully!
+kernelino> Lua 5.4
+kernelino> Welcome to the editor! Type 'wq' to save and quit or 'q' to quit without saving.
+> > File saved successfully!
+kernelino> lua: /boom.lua:1: boom
+kernelino> Welcome to the editor! Type 'wq' to save and quit or 'q' to quit without saving.
+> > File saved successfully!
+kernelino> lua: /bad.lua:1: unexpected symbol near '='
+kernelino> Welcome to the editor! Type 'wq' to save and quit or 'q' to quit without saving.
+> > File saved successfully!
+kernelino> nil	nil	nil
+kernelino> kernelino> Welcome to the editor! Type 'wq' to save and quit or 'q' to quit without saving.
+> > File saved successfully!
+kernelino> kernelino> run by relative path
+kernelino> /tmp
+kernelino> 
