@@ -32,7 +32,37 @@ Read the ones that govern a module before changing it. A change that contradicts
 
 ## Knowledge graph
 
-See `graph.json`.
+[`graph.json`](graph.json) is the machine-readable map of the repository: it links every source module, ADR, domain-model page and test file. It is written by hand and validated by `tests/docs_graph.rs`, which `cargo test` runs ([ADR 0009](adr/0009-hand-written-validated-knowledge-graph.md)).
+
+```json
+{
+  "version": 1,
+  "nodes": [{ "id": "module:vfs", "kind": "module", "path": "src/vfs.rs", "title": "Virtual file system" }],
+  "edges": [{ "from": "module:vfs", "to": "context:filesystem", "kind": "implements" }]
+}
+```
+
+Every node is one file. Its `path` is relative to the repository root and its `id` is `<kind>:<slug>`, the slug in `[a-z0-9_-]`.
+
+| Node kind | Files |
+| --- | --- |
+| `module` | `src/*.rs` and `src/*.lua` |
+| `adr` | `docs/adr/NNNN-*.md` |
+| `context` | the bounded-context pages `docs/ddd/{shell,kernel,filesystem,memory,processes}.md` |
+| `test` | `tests/*.rs` (the golden files of `tests/e2e/` are not nodes) |
+| `doc` | any other file: `docs/README.md`, `docs/CONTEXT.md`, `docs/ddd/glossary.md`, `docs/ddd/context-map.md`, `docs/graph.json` |
+
+| Edge kind | From | To | Meaning |
+| --- | --- | --- | --- |
+| `implements` | `module` | `context` | the bounded context the module belongs to; exactly one per module |
+| `governs` | `adr` | `module`, `context`, `test`, `doc` | the decision constrains that node; at least one per ADR |
+| `depends_on` | `module` | `module` | `use crate::`, `crate::` paths or `include_str!`, test-only imports excluded |
+| `tested_by` | `module` | `test` | an integration test executes the module's code |
+| `relates_to` | `context` | `context` | a relation of the [context map](ddd/context-map.md) |
+
+Before changing a module, follow its incoming `governs` edges to the ADRs to read and its `implements` edge to its bounded context; follow `tested_by` to find where to add tests. Unit tests are inline in each module and are not edges.
+
+Every pull request that adds, removes or renames a file of `src/`, `tests/*.rs`, `docs/adr/` or `docs/ddd/` must update `graph.json`: `cargo test --test docs_graph` fails otherwise, naming the offending id or path.
 
 ## Testing
 
