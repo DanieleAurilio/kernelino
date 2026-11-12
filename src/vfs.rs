@@ -316,4 +316,82 @@ mod tests {
         assert!(vfs.file("d/x.lua").is_ok());
         assert!(matches!(vfs.file("d"), Err(VfsError::IsADirectory(_))));
     }
+
+    #[test]
+    fn errors_display_the_path() {
+        let path = || PathBuf::from("/a");
+        assert_eq!(
+            VfsError::NotFound(path()).to_string(),
+            "/a: no such file or directory"
+        );
+        assert_eq!(
+            VfsError::AlreadyExists(path()).to_string(),
+            "/a: already exists"
+        );
+        assert_eq!(
+            VfsError::NotADirectory(path()).to_string(),
+            "/a: not a directory"
+        );
+        assert_eq!(
+            VfsError::IsADirectory(path()).to_string(),
+            "/a: is a directory"
+        );
+        assert_eq!(
+            VfsError::InUse(path()).to_string(),
+            "/a: is the current directory or one of its parents"
+        );
+    }
+
+    #[test]
+    fn root_is_not_a_file() {
+        let mut vfs = Vfs::new();
+        assert_eq!(
+            vfs.create_file("/"),
+            Err(VfsError::IsADirectory(PathBuf::from("/")))
+        );
+    }
+
+    #[test]
+    fn listing_a_file_fails() {
+        let mut vfs = Vfs::new();
+        vfs.create_file("f.txt").unwrap();
+        assert!(matches!(vfs.list("f.txt"), Err(VfsError::NotADirectory(_))));
+    }
+
+    #[test]
+    fn removing_a_missing_path_fails() {
+        let mut vfs = Vfs::new();
+        assert!(matches!(
+            vfs.remove("missing"),
+            Err(VfsError::NotFound(path)) if path == Path::new("/missing")
+        ));
+    }
+
+    #[test]
+    fn file_mut_rejects_directories() {
+        let mut vfs = Vfs::new();
+        vfs.create_dir_all("d").unwrap();
+        assert_eq!(
+            vfs.file_mut("d").map(|_| ()),
+            Err(VfsError::IsADirectory(PathBuf::from("/d")))
+        );
+        assert!(matches!(vfs.file_mut("nope"), Err(VfsError::NotFound(_))));
+    }
+
+    #[test]
+    fn mkdir_through_a_file_fails() {
+        let mut vfs = Vfs::new();
+        vfs.create_file("f").unwrap();
+        assert_eq!(
+            vfs.create_dir_all("f/x"),
+            Err(VfsError::NotADirectory(PathBuf::from("/f/x")))
+        );
+    }
+
+    #[test]
+    fn cd_dotdot_at_root_stays_at_root() {
+        let mut vfs = Vfs::new();
+        vfs.change_dir("..").unwrap();
+        assert_eq!(vfs.cwd(), Path::new("/"));
+    }
 }
