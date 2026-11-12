@@ -1,0 +1,10 @@
+mkdir a/b/c
+cd a/b
+pwd
+cd ../..
+ls
+cd a/b/c
+cd
+pwd
+cd ..
+pwd
