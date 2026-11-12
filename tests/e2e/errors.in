@@ -1,0 +1,13 @@
+frobnicate
+rm
+ls a b
+touch file.txt
+cd file.txt
+mkdir dir
+read dir
+mkdir dir
+touch file.txt
+mkdir p/q
+cd p/q
+rm /p
+pwd

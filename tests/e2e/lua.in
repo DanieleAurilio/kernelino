@@ -1,0 +1,23 @@
+write version.lua
+print(_VERSION)
+wq
+lua version.lua
+write boom.lua
+error('boom')
+wq
+lua boom.lua
+write bad.lua
+x = = 1
+wq
+lua bad.lua
+write host.lua
+print(io, os, require)
+wq
+lua host.lua
+mkdir scripts
+write scripts/relative.lua
+print('run by relative path')
+wq
+cd /tmp
+lua ../scripts/relative.lua
+pwd

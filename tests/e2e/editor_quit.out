@@ -1,0 +1,6 @@
+kernelino> Welcome to the editor! Type 'wq' to save and quit or 'q' to quit without saving.
+> > Exit without save
+kernelino> .env 0
+bin/
+tmp/
+kernelino> 
