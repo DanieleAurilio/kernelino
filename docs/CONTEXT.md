@@ -17,18 +17,18 @@ A sandbox OS shell written in Rust. People use it from the CLI to run **real Lua
 - mlua 0.12 with vendored Lua 5.4 (C, compiled by the build)
 
 ## Key architectural decisions
-- Ownership: `Shell` → `Kernel` → { `Vfs`, `Vmm`, `Vpm` }. No global state.
-- VFS has no parent pointers: everything is resolved from absolute paths (`Vfs::resolve`).
-- File contents live in the VMM; a `File` only stores its pages and size. `Kernel` keeps them consistent (frees pages on rewrite/remove).
-- Errors are typed (`VfsError`, `VmmError`, `KernelError`); the shell prints them and continues.
-- Every command runs under `catch_unwind`: a panic aborts the command, not the shell.
-- Lua sandbox (`lua.rs`):
-  - one Lua state per process (scripts cannot tamper with each other, e.g. the string metatable);
-  - only coroutine/table/string/utf8/math libs; `dofile`, `loadfile`, `string.dump` removed; `load` is text-only (crafted bytecode can corrupt the VM);
-  - `print` writes into a per-process buffer the shell drains after every slice;
-  - memory limit per state; a **global** instruction hook (inherited by script coroutines) yields every `TIME_SLICE` instructions and kills on CPU limit or when the script runs `STUCK_LIMIT` past its slice in a non-yieldable section (e.g. `table.sort` comparator);
-  - `sandbox.lua` wraps `coroutine.resume/yield/wrap` so a preemption inside a script coroutine is passed up to the scheduler and stays invisible to the script, and wraps `pcall/xpcall/coroutine.resume` so a kill cannot be caught.
-- Shell `lua <path>` runs a process in the foreground, slice by slice (64 MB, 1e9 instructions ≈ 2 s in release).
+- Ownership: `Shell` → `Kernel` → { `Vfs`, `Vmm`, `Vpm` }. No global state. ([ADR 0001](adr/0001-tree-ownership-without-global-state.md))
+- VFS has no parent pointers: everything is resolved from absolute paths (`Vfs::resolve`). ([ADR 0002](adr/0002-vfs-without-parent-pointers.md))
+- File contents live in the VMM; a `File` only stores its pages and size. `Kernel` keeps them consistent (frees pages on rewrite/remove). ([ADR 0003](adr/0003-file-contents-live-in-the-vmm.md))
+- Errors are typed (`VfsError`, `VmmError`, `KernelError`); the shell prints them and continues. ([ADR 0004](adr/0004-typed-errors-and-panic-isolation.md))
+- Every command runs under `catch_unwind`: a panic aborts the command, not the shell. ([ADR 0004](adr/0004-typed-errors-and-panic-isolation.md))
+- Lua sandbox (`lua.rs`), on real Lua 5.4 through vendored mlua ([ADR 0005](adr/0005-real-lua-through-vendored-mlua.md)):
+  - one Lua state per process (scripts cannot tamper with each other, e.g. the string metatable); ([ADR 0006](adr/0006-one-sandboxed-lua-state-per-process.md))
+  - only coroutine/table/string/utf8/math libs; `dofile`, `loadfile`, `string.dump` removed; `load` is text-only (crafted bytecode can corrupt the VM); ([ADR 0006](adr/0006-one-sandboxed-lua-state-per-process.md))
+  - `print` writes into a per-process buffer the shell drains after every slice; ([ADR 0006](adr/0006-one-sandboxed-lua-state-per-process.md))
+  - memory limit per state; a **global** instruction hook (inherited by script coroutines) yields every `TIME_SLICE` instructions and kills on CPU limit or when the script runs `STUCK_LIMIT` past its slice in a non-yieldable section (e.g. `table.sort` comparator); ([ADR 0006](adr/0006-one-sandboxed-lua-state-per-process.md), [ADR 0007](adr/0007-preemption-through-a-global-instruction-hook.md))
+  - `sandbox.lua` wraps `coroutine.resume/yield/wrap` so a preemption inside a script coroutine is passed up to the scheduler and stays invisible to the script, and wraps `pcall/xpcall/coroutine.resume` so a kill cannot be caught. ([ADR 0007](adr/0007-preemption-through-a-global-instruction-hook.md))
+- Shell `lua <path>` runs a process in the foreground, slice by slice (64 MB, 1e9 instructions ≈ 2 s in release). ([ADR 0007](adr/0007-preemption-through-a-global-instruction-hook.md))
 
 ## Roadmap
 - M0 ✅ hygiene: tests, CI, unused deps removed, no panic/hang reachable from the shell, help aligned
