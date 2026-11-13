@@ -10,7 +10,8 @@ Read `docs/README.md` first: it is the index of the whole documentation.
 ## Commands
 - `cargo fmt --check`
 - `cargo clippy --all-targets`
-- `cargo test`
+- `cargo test` — quick local run of the unit and e2e tests
+- `cargo llvm-cov --all-targets --fail-under-lines 80 --ignore-filename-regex 'src/main.rs'` — what CI runs instead of `cargo test`: the same tests, gated on 80% line coverage
 
 ## Rules
 - Use the terms of `docs/ddd/glossary.md` in code, docs and commits.

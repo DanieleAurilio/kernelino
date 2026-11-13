@@ -94,3 +94,15 @@ To add a scenario:
 3. Review the `.out` by hand against the behaviour of `src/shell.rs` before committing it.
 
 `top` is not covered: it enables raw mode and needs a TTY. Scenarios must not hit the Lua CPU limit, which is too slow to reach in debug builds; process kills are covered by the unit tests of `src/lua.rs`.
+
+### Coverage gate
+
+CI runs the tests through [`cargo llvm-cov`](https://github.com/taiki-e/cargo-llvm-cov) instead of `cargo test`, and fails if line coverage drops below 80%:
+
+```sh
+cargo llvm-cov --all-targets --fail-under-lines 80 --ignore-filename-regex 'src/main.rs'
+```
+
+- Unit and e2e tests are measured together: `cargo llvm-cov` also instruments the binary that `tests/e2e.rs` spawns through `CARGO_BIN_EXE_kernelino`. `cargo llvm-cov --test e2e` shows the e2e contribution alone.
+- `src/main.rs` is excluded: its 6 lines only wire stdin and stdout to the shell, and only the e2e binary reaches them.
+- `top()` in `src/shell.rs` stays in the count, by decision, although it is not testable (it needs a TTY).
