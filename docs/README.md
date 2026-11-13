@@ -8,6 +8,12 @@ See [`CONTEXT.md`](CONTEXT.md): what kernelino is, its tech stack, key architect
 
 ## Architecture decisions
 
+See `adr/`.
+
+## Domain model
+
+See `ddd/`.
+
 Read the ones that govern a module before changing it. A change that contradicts an ADR needs a new ADR that supersedes it.
 
 - [0001. Tree ownership without global state](adr/0001-tree-ownership-without-global-state.md)
